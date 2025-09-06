@@ -7,6 +7,7 @@ import os
 # and 'from src.data_utils.data_loader import ...'
 from data_utils.data_loader import import_candidate_file
 from logic.logic_processor import populate_flaschard_data
+from utils.utils_export import export_to_quizlet
 
 
 def cli_prompt():
@@ -52,12 +53,25 @@ def cli_prompt():
             print(f"Error: The file '{args.filepath}' does not exist.")
             return
 
-        # Load the data using a function from your data_utils module
+        # Load the data from the specified file
         word_data = import_candidate_file(args.filepath)
 
+        # Process the data to populate flashcard information
         if not word_data.empty:
-            # Process the flashcards using a function from your logic module
-            populate_flaschard_data(word_data, args.output_dir) # HERE !!!
+            populate_flaschard_data(word_data)
             print("🎉 Flashcard generation completed!")
         else:
             print("No data to process. Exiting.")
+        
+        # Export the processed data to the specified output file
+        export_to_quizlet(word_data, args.output_dir, separator=',')
+        
+        # Verify the output file was created
+        if os.path.exists(args.output_dir):
+            print(f"\nVerification: The file '{args.output_dir}' exists in the current directory.")
+            # You can also read the file to see the content
+            with open(args.output_dir, 'r') as f:
+                print("\nContent of the exported file:")
+                print(f.read())
+        else:
+            print(f"\nVerification: The file '{args.output_dir}' was not created.")
