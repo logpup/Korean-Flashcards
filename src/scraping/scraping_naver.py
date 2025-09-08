@@ -84,21 +84,3 @@ def scrape_naver_dict(korean_word: str):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
-
-if __name__ == '__main__':
-    # Test with a few words
-    words_to_scrape = ["사랑", "감사", "학교", "컴퓨터"]
-
-    for word in words_to_scrape:
-        print(f"Scraping data for '{word}'...")
-        data = scrape_naver_dict(word)
-        if data:
-            print("-" * 20)
-            print(f"Korean Word: {data['korean_word']}")
-            print(f"Hanja: {data['hanja']}")
-            print(f"English Definition: {data['english_definition']}")
-            print(f"Example Sentence: {data['example_sentence']}")
-            print("-" * 20)
-        else:
-            print(f"Could not retrieve data for '{word}'.")
-        print("\n")
