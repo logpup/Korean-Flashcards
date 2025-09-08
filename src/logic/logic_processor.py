@@ -28,10 +28,10 @@ def populate_flaschard_data(df):
         korean_word = row[0] # Assuming the Korean word is in the first column
 
         # Retrieve data from the lookup function
-        dictionary_entry = lookup_entry(korean_word)
-        hanja = dictionary_entry['hanja']
-        english = dictionary_entry['english_definition']
-        example = dictionary_entry['example_sentence']
+        word_entry = lookup_entry(korean_word)
+        hanja = word_entry['hanja']
+        english = word_entry['english_definition']
+        example = word_entry['example_sentence']
 
         # Populate the new columns
         df.at[index, 'Hanja'] = hanja

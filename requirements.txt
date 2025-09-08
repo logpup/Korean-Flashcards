@@ -1,4 +1,3 @@
-# requirements.txt
 pandas
 bs4
-krdict
+requests

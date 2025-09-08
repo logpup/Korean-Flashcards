@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote
-import re
 
 def scrape_naver_dict(korean_word: str):
     """
