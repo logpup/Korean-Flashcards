@@ -1,7 +1,10 @@
 import pandas as pd
 import os
 
-def export_to_quizlet(dataframe: pd.DataFrame, filename: str, separator: str = ','):
+def export_flashcard_data(dataframe: pd.DataFrame, filename: str, separator: str = ','):
+    _export_to_quizlet(dataframe, filename, separator)
+        
+def _export_to_quizlet(dataframe: pd.DataFrame, filename: str, separator: str = ','):
     """
     Exports a Pandas DataFrame to a text file.
 

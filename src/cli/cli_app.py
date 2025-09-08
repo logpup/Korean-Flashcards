@@ -1,13 +1,10 @@
 import argparse
 import os
 
-# Assume these functions are defined in your project's logic and data_utils modules.
-# We'll import them here to demonstrate the full application flow.
-# If these files are nested in a 'src' directory, the import would be 'from src.logic.logic_processor import ...'
-# and 'from src.data_utils.data_loader import ...'
+# Import methods from other pages.
 from data_utils.data_loader import import_candidate_file
 from logic.logic_processor import populate_flaschard_data
-from utils.utils_export import export_to_quizlet
+from utils.utils_export import export_flashcard_data
 
 
 def cli_prompt():
@@ -64,7 +61,7 @@ def cli_prompt():
             print("No data to process. Exiting.")
         
         # Export the processed data to the specified output file
-        export_to_quizlet(word_data, args.output_dir, separator=',')
+        export_flashcard_data(word_data, args.output_dir, separator=',')
         
         # Verify the output file was created
         if os.path.exists(args.output_dir):

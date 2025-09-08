@@ -25,6 +25,12 @@ def import_candidate_file(filepath):
 def _import_txt(filepath):
     """
     Internal function to import a simple text file.
+
+    The moethod performs the following steps;
+    1. Opens and reads the specified text file.
+    2. Strips leading/trailing whitespaces and removes linebreak from each line.
+    3. Filters out any empty lines.
+    4. Create a pandas DataFrame where the cleaned lines are stored in the first column.
     """
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -65,8 +71,3 @@ def _import_html(filepath):
     except Exception as e:
         print(f"❌ Error importing HTML: {e}")
         return pd.DataFrame()
-    
-    
-# Example usage (uncomment the lines below to run)
-# df = read_html_lines_to_dataframe('my_file.html')
-# print(df)
