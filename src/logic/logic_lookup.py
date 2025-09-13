@@ -1,5 +1,5 @@
 import pandas as pd
-from scraping.scraping_naver import scrape_naver_dict
+from scraping.scraping_naver_dict import scrape_naver_dict
 
 def lookup_entry(korean_word):
     # 

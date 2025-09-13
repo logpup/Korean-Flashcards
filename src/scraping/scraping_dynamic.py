@@ -2,7 +2,7 @@ import asyncio
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
-async def scrape_dynamic_page(url):
+async def render_dynamic_page(url):
     async with async_playwright() as p:
         # Launch the headless browser
         browser = await p.chromium.launch(headless=True)

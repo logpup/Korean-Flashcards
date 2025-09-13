@@ -1,0 +1,80 @@
+data_entry
+    generated_key
+    korean_literal
+    data
+    	scraping_data
+    		scraping_data_naver_dict
+    			ko.dict.naver.com
+    				word
+    					entry_1
+    						hangul
+    						hanja
+    						senses
+    							sense_1
+    								part of speech
+    								usage_label
+    								definition
+    								synonyms
+    									synonym 1
+    									synonym 2
+    									synonym 3
+    									...
+                                sense_2
+                                sense_3
+                                ...
+    						phonetics
+    							pronunciation_guide
+    							audio_file
+    						reference
+    					entry_2
+    					entry_3
+    					...
+    				proverb_idiom
+    				meanings
+    					meaning_1
+    						hangul
+    						hanja
+    						usage_label
+    						explanation
+    						reference
+    							source_label
+    							source_date
+    					meaning_2
+    					meaning_3
+    					...
+    				examples
+    					example_1
+    						phrase
+    						linked_sense
+    						phonetics
+    							audio_file
+    							reference
+    					example_2
+    					example_3
+    				spelling · orthography
+    			en.dict.naver.com
+					word_idiom
+					meanings
+					examples
+    			hanja.dict.naver.com
+					전체
+					음_한자
+					단어_성어
+					뜻풀이
+					부수_모양자
+					학습정보    
+    	api_data
+
+
+flashcard
+	korean_word
+	english_idioms
+		1
+		2
+		3
+		...
+	example_sentences
+		1
+		2
+		3
+		...
