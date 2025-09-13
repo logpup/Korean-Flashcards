@@ -1,15 +1,18 @@
+# Python standard library imports
 import argparse
 import os
 
-# Import methods from other pages.
+# Imported methods from other pages
 from data_utils.data_loader import import_candidate_file
 from logic.logic_processor import populate_flaschard_data
 from utils.utils_export import export_flashcard_data
 
-
 def cli_prompt():
     """
     Main entry point for the flashcard generator CLI.
+
+    Example:
+    python src/main.py generate <input_file> --output-dir <output_directory>
     """
     # 1. Create the top-level parser
     parser = argparse.ArgumentParser(
@@ -24,7 +27,7 @@ def cli_prompt():
     # 3. Create a parser for the "generate" command
     generate_parser = subparsers.add_parser(
         "generate",
-        help="Generate flashcards (images and audio) from an input file."
+        help="Generate flashcard entries for a list of Korean words from an input file."
     )
     generate_parser.add_argument(
         "filepath",
@@ -44,7 +47,6 @@ def cli_prompt():
     # 5. Handle the command based on the parsed arguments
     if args.command == "generate":
         print(f"Starting flashcard generation from file: {args.filepath}")
-        
         # Check if the file exists before proceeding
         if not os.path.exists(args.filepath):
             print(f"Error: The file '{args.filepath}' does not exist.")
@@ -55,20 +57,11 @@ def cli_prompt():
 
         # Process the data to populate flashcard information
         if not word_data.empty:
+            print(f"Processing {len(word_data)} words...")
             populate_flaschard_data(word_data)
-            print("🎉 Flashcard generation completed!")
         else:
             print("No data to process. Exiting.")
-        
-        # Export the processed data to the specified output file
-        export_flashcard_data(word_data, args.output_dir, separator=',')
-        
-        # Verify the output file was created
-        if os.path.exists(args.output_dir):
-            print(f"\nVerification: The file '{args.output_dir}' exists in the current directory.")
-            # You can also read the file to see the content
-            with open(args.output_dir, 'r') as f:
-                print("\nContent of the exported file:")
-                print(f.read())
-        else:
-            print(f"\nVerification: The file '{args.output_dir}' was not created.")
+
+        # Export the processed data to the specified output directory
+        output_file = os.path.join(args.output_dir, "flashcards.txt")
+        export_flashcard_data(word_data, output_file)
