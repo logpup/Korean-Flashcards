@@ -86,7 +86,9 @@ def parse_english_word_idiom(soup: BeautifulSoup):
         soup (BeautifulSoup): The BeautifulSoup object containing the parsed HTML of the page.
 
     Returns:
-        data: A list containing the extracted information, where each entry is represented as a dictionary.
+        entries_data: A list containing the extracted information, where each entry is represented
+            as a dictionary.
+
     '''
     # Isolate the main content area of the dictionary page
     content_tag = soup.find("div", id="searchPage_entry")
@@ -96,7 +98,7 @@ def parse_english_word_idiom(soup: BeautifulSoup):
     entries_tag = content.find_all("div", class_="row")
 
     # Initialize variable to store extracted entry data
-    page_data = []
+    entries_data = []
 
     # Loop through each entry and extract relevant information
     for entry_tag in entries_tag:
@@ -138,9 +140,9 @@ def parse_english_word_idiom(soup: BeautifulSoup):
             "extracted_at": datetime.datetime.now() # Add the current timestamp here
         }
         # Append the entry data to the main data list
-        page_data.append(entry_data)
+        entries_data.append(entry_data)
 
-    return page_data
+    return entries_data
 
 def parse_english_examples(soup: BeautifulSoup):
 

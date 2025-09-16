@@ -1,17 +1,73 @@
-import pymongo
-from scraping.scraping_naver_dict import scrape_naver_dict
+from pymongo.collection import Collection
 
-def add_entry(collection, entry):
+from db.models import ScrapeData, KoreanWord
 
+def entry_exists(db_collection: Collection, word: str) -> bool:
     """
-    Retrieves all flashcards from the collection and prints them.
+    Returns True if an entry for the given word exists in the collection.
+    """
+    return db_collection.find_one({"word": word}) is not None
+
+def create_entry(db_collection: Collection, korean_word: KoreanWord):
+    """
+    Inserts a KoreanWord instance into the MongoDB collection.
+    """
+    # Convert dataclass to dictionary for MongoDB
+    word_dict = korean_word.__dict__.copy()
+    # Inserts KoreanWord data type into collection
+    db_collection.insert_one(word_dict)
+
+def delete_entry(db_collection: Collection, word: str):
+    """
+    Delete a KoreanWord entry from the MongoDB collection by word.
+    """
+    db_collection.delete_one({"word": word})
+    
+def update_entry(db_collection: Collection, word: str, key: str, value):
+    """
+    Update a KoreanWord entry in the collection by word and attribute name.
+    """
+    db_collection.update_one(
+        {"word": word},           # Find the document by the 'word' field
+        {"$set": {key: value}}    # Set the specified attribute to the new value
+    )
+
+def append_entry(db_collection: Collection, word: str, key: str, value):
+    """
+    Append an entry for a KoreanWord instance in the MongoDB collection.
+    """
+    db_collection.update_one(
+        {"word": word},         # Find the document by the 'word' field
+        {"$push": {key: value}} # Append the speciied attribute with new entry
+    )
+
+def print_all_documents(collection):
+    """
+    Prints all documents in the specified MongoDB collection.
     """
     if collection is None:
-        print("Cannot retrieve flashcards. Database connection failed.")
+        print("Cannot print documents: MongoDB collection is not available.")
         return
 
-    print("\n--- All Flashcards ---")
-    # The find() method returns a cursor, which can be iterated.
-    for flashcard in collection.find():
-        print(f"Question: {flashcard['question']}")
-        print(f"Answer: {flashcard['answer']}\n")
+    print("\n--- All Documents in the Collection ---")
+    try:
+        # The find() method returns a cursor, which is an iterable
+        # that allows you to loop through all documents.
+        documents = collection.find({})
+        
+        # Check if the collection is empty
+        if collection.count_documents({}) == 0:
+            print("The collection is empty.")
+            return
+
+        for doc in documents:
+            # Print each document
+            print(doc)
+            
+    except Exception as e:
+        print(f"An error occurred while fetching documents: {e}")
+    finally:
+        # A good practice is to close the client connection after you're done.
+        # However, in this simple script, the client goes out of scope anyway.
+        # For a more complex application, client.close() is recommended.
+        pass
