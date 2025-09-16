@@ -3,9 +3,11 @@ import argparse
 import os
 
 # Imported methods from other pages
+from db.connection import setup_database
 from data_utils.data_loader import import_candidate_file
 from logic.logic_processor import populate_flaschard_data
 from utils.utils_export import export_flashcard_data
+from scraping.scraping_naver_dict import scrape_naver_dict
 
 def cli_prompt():
     """
@@ -25,43 +27,43 @@ def cli_prompt():
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
     # 3. Create a parser for the "generate" command
-    generate_parser = subparsers.add_parser(
-        "generate",
-        help="Generate flashcard entries for a list of Korean words from an input file."
+    scrape_parser = subparsers.add_parser(
+        "scrape",
+        help="Scrape websites for data concering the Korean words provided in a list from an input file."
     )
-    generate_parser.add_argument(
+    scrape_parser.add_argument(
         "filepath",
         type=str,
         help="Path to the input file (e.g., .csv, .txt)."
-    )
-    generate_parser.add_argument(
-        "-o", "--output-dir",
-        type=str,
-        default="flashcards",
-        help="Directory to save the generated flashcards."
     )
 
     # 4. Parse the arguments
     args = parser.parse_args()
 
     # 5. Handle the command based on the parsed arguments
-    if args.command == "generate":
-        print(f"Starting flashcard generation from file: {args.filepath}")
+    if args.command == "scrape":
+
+        print(f"Starting to scrape data online for words listed: {args.filepath}")
+
         # Check if the file exists before proceeding
         if not os.path.exists(args.filepath):
             print(f"Error: The file '{args.filepath}' does not exist.")
             return
 
         # Load the data from the specified file
-        word_data = import_candidate_file(args.filepath)
+        words = import_candidate_file(args.filepath)
 
-        # Process the data to populate flashcard information
-        if not word_data.empty:
-            print(f"Processing {len(word_data)} words...")
-            populate_flaschard_data(word_data)
+        # Initialize variable to hold list of found word data
+        word_data = []
+
+        # Scrape data to populate word entries
+        if not words.empty:
+            print(f"Processing {len(words)} words...")
+            for korean_word in words:
+                word_data.append(scrape_naver_dict(korean_word))
         else:
-            print("No data to process. Exiting.")
+            print("No words in list to process. Exiting.")
 
-        # Export the processed data to the specified output directory
-        output_file = os.path.join(args.output_dir, "flashcards.txt")
-        export_flashcard_data(word_data, output_file)
+        # Setup MongoDB database and start connection
+        collection = setup_database()
+        # <--- we're here trying to pass data on to the database

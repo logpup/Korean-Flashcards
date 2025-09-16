@@ -96,7 +96,7 @@ def parse_english_word_idiom(soup: BeautifulSoup):
     entries_tag = content.find_all("div", class_="row")
 
     # Initialize variable to store extracted entry data
-    data = []
+    page_data = []
 
     # Loop through each entry and extract relevant information
     for entry_tag in entries_tag:
@@ -138,9 +138,9 @@ def parse_english_word_idiom(soup: BeautifulSoup):
             "extracted_at": datetime.datetime.now() # Add the current timestamp here
         }
         # Append the entry data to the main data list
-        data.append(entry_data)
+        page_data.append(entry_data)
 
-    return data
+    return page_data
 
 def parse_english_examples(soup: BeautifulSoup):
 
@@ -150,7 +150,7 @@ def parse_english_examples(soup: BeautifulSoup):
         soup (BeautifulSoup): The BeautifulSoup object containing the parsed HTML of the page.
 
     Returns:
-        data: A list containing the extracted information, where each example is represented as a dictionary.
+        page_data: A list containing the extracted information, where each example is represented as a dictionary.
     '''
     # Isolate the main content area of the dictionary page
     content_tag = soup.find("div", id="searchPage_example")
@@ -160,7 +160,7 @@ def parse_english_examples(soup: BeautifulSoup):
     examples_tag = content.find_all("div", class_="row")
 
     # Initialize variable to store extracted example data
-    data = []
+    page_data = []
 
     # Loop through each example and extract relevant information
     for example_tag in examples_tag:
@@ -197,10 +197,35 @@ def parse_english_examples(soup: BeautifulSoup):
         }
 
         # Append the example data to the main data list
-        data.append(example_data)
+        page_data.append(example_data)
+
+    return page_data
+
+def scrape_naver_dict(korean_word):
+    # Initialize variables to save scraped page data
+    page_data = []
+
+    # Scrape Naver's Korean-English Dictionary's "Word Idiom" page
+    en_word_idiom_page_data = None
+    soup = scrape_page(korean_word, "en", "word")
+    if soup:
+        en_word_idiom_page_data = parse_english_word_idiom(soup)
+        page_data.append(["naver_dict_en_word_idiom", en_word_idiom_page_data])
+    
+    # Scrap Naver's Korean-English Dictionary's "Examples" page
+    en_example_page_data = None
+    soup = scrape_page(korean_word, "en", "example")
+    if soup:
+        en_example_page_data = parse_english_examples(soup)
+        page_data.append(["naver_dict_en_example", en_example_page_data])
+    
+    # Prepare return data as a dictionary
+    data = {
+        "korean_literal": korean_word,
+        "scraped_data": page_data
+    }
 
     return data
-
 
 # Test the scraping and parsing functions
 page = asyncio.run(scrape_page("마늘", "en", "example"))

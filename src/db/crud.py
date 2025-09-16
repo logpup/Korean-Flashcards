@@ -1,7 +1,7 @@
 import pymongo
 from scraping.scraping_naver_dict import scrape_naver_dict
 
-def add_naver_dict_entry(collection, entry):
+def add_entry(collection, entry):
 
     """
     Retrieves all flashcards from the collection and prints them.
