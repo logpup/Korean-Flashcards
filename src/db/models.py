@@ -9,15 +9,15 @@ class ScrapeData:
     """
 
     # Core data information, required for every entry
-    source_url: str = ""
-    source_name: str = "" # e.g., "Naver Dictionary", "Korena API"
+    source_url: str
+    source_name: str # e.g., "Naver Dictionary", "Korena API"
 
     # List of entries to store for each page scraped
     entries: List[Dict] = field(default_factory=list)
 
     # Timestamps for tracking when the data was added or last updated
     created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
-    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
 
 @dataclass
 class KoreanWord:
@@ -29,14 +29,14 @@ class KoreanWord:
     word: str
 
     # Optional word data, added to class as they are aquired
-    hanja: Optional[str]
-    korean_definition: Optional[str]
-    ko_example_sentence: Optional[str]
-    english_definition: Optional[str]
-    en_example_sentence: Optional[str]
+    hanja: Optional[str] = None
+    ko_definition: Optional[str] = None
+    ko_example_sentence: Optional[str] = None
+    en_definition: Optional[str] = None
+    en_example_sentence: Optional[str] = None
 
     # Stores data from both API's and scraped webpages
-    word_data: Optional[List[Any]] = field(default_factory=list)
+    word_data: List[Any] = field(default_factory=list)
     
     # Timestamps for tracking when the data was added or last updated
     created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
