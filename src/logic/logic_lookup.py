@@ -10,7 +10,7 @@ def lookup_entry(korean_word):
         korean_word (string): The Korean word to search for
 
     Returns:
-        document: A dictionary containing the scraped data.
+        document: A list containing the scraped data.
             Returns None if the word is not found or an error occurs.
     """
     document = scrape_naver_dict(korean_word)

@@ -8,7 +8,7 @@ import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
-# Import methods from other pages
+# Internal library methods imports
 from scraping.scraping_dynamic import render_dynamic_page
 
 # Initialize a semaphore to limit concurrent requests

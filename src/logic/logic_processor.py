@@ -1,41 +1,46 @@
-import pandas as pd
+# Third-part library imports
+from pymongo.collection import Collection
 
-from logic.logic_lookup import lookup_entry
+# Internal library methods imports
+from db.crud import query_entry
 
-def populate_flaschard_data(df):
+def query_en_definition(collection: Collection, korean_word: str):
+    # Retrieve value from word data
+    collection.find().sort("update_at", -1).limit(1)
+    query_entry(collection, korean_word, )
+    korean_word
     """
-    Populates a pandas DataFrame with Hanja, English definition, and an example
-    sentence for a list of Korean words in the first column.
-
-    Args:
-        df (pd.DataFrame): A DataFrame with Korean words in the first column.
-
-    Returns:
-        pd.DataFrame: The original DataFrame with three new columns populated
-                      with Hanja, English definition, and example sentences.
+    1. look up the word
+    2. send data over to be stored in the database
+    3. query from results
+    4. populate word attributes
+    5. use word_attributes to make flashcards
+    6. send flaschards made this sessions to database
+    7. export flashcard file
     """
-    if df.empty or df.shape[1] < 1:
-        print("Input DataFrame is empty or does not have a first column.")
-        return df
-    
-    # Add new columns to the DataFrame
-    df['Hanja'] = ""
-    df['English Definition'] = ""
-    df['Example Sentence'] = ""
 
-    # Iterate through the rows of the DataFrame
-    for index, row in df.iterrows():
-        korean_word = row[0] # Assuming the Korean word is in the first column
+def query_en_example(korean_word: str):
+    korean_word
 
-        # Retrieve data from the lookup function
-        word_entry = lookup_entry(korean_word)
-        hanja = word_entry['hanja']
-        english = word_entry['english_definition']
-        example = word_entry['example_sentence']
+def query_hanja(korean_word: str):
+    korean_word
 
-        # Populate the new columns
-        df.at[index, 'Hanja'] = hanja
-        df.at[index, 'English Definition'] = english
-        df.at[index, 'Example Sentence'] = example
+korean_word = "라면"
 
-    return df
+query_en_definition
+
+"""
+korean_word
+
+hanja_1
+english_idioms_1
+
+hanja_2
+english_idioms_2
+
+example_sentence_1
+example_translation_1
+
+example_sentence_2
+example_translation_2
+"""

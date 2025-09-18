@@ -1,3 +1,7 @@
+# Python standard library imports
+import datetime
+
+# Third-part library imports
 from pymongo.collection import Collection
 
 from db.models import ScrapeData, KoreanWord
@@ -39,6 +43,37 @@ def append_entry(db_collection: Collection, word: str, key: str, value):
     db_collection.update_one(
         {"word": word},         # Find the document by the 'word' field
         {"$push": {key: value}} # Append the speciied attribute with new entry
+    )
+
+def set_entry(db_collection: Collection, word: str, key: str, value):
+    """
+    Set the entry for a KoreanWord instance in the MongoDB collection.
+    """
+    db_collection.update_one(
+        {"word": word},         # Find the document by the 'word' field
+        {"$set": {key, value}}, # Set the specified attribute with the value
+        {"last_update": datetime.datetime.now()}
+    )
+
+    # If first instance, also set created_at value
+    created = db_collection.find_one(
+        {"word": word},
+        {"created_at": { "exists": True }}
+    )
+    
+    if not created:
+        db_collection.update_one(
+            {"word": word},
+            {"$set": {"created_at", datetime.datetime.now()}}
+        )
+
+def query_entry(db_collection: Collection, word: str, key: str):
+    """
+    Retreieve value for the specified attribute for KoreanWord instance in the MongoDB collection
+    """
+    db_collection.find_one(
+        {"word": word},
+        {key: 1, "id_": 0}
     )
 
 def print_all_documents(collection):
