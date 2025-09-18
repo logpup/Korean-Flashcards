@@ -23,7 +23,7 @@ if collection is not None:
             )
             create_entry(collection, word_obj)
 
-        # Append data if entry exists, if not     
+        # Append data if entry exists     
         word_data = asyncio.run(scrape_naver_dict(korean_word))
         for data in word_data:
             append_entry(collection, korean_word, "word_data", data)

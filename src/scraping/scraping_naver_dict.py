@@ -1,17 +1,40 @@
 # Python standard library imports
 import datetime
-import time
 import asyncio
 import re
 
 # Third-party Python library imports
-import requests
 import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
 # Import methods from other pages
 from scraping.scraping_dynamic import render_dynamic_page
+
+# Initialize a semaphore to limit concurrent requests
+# Adjust the value (e.g., 5) to control the number of simultaneous tasks.
+REQUEST_SEMAPHORE = asyncio.Semaphore(5)
+
+# Method to set the elector for page.await_for_selector
+def set_selector(region: str, url_range: str):
+    """
+    Returns the appropriate CSS selector for a given region and URL range.
+    Returns None if no matching selector is found.
+    """
+    selector = ""
+    if region == "en":
+        if url_range == "word":
+            selector = "#searchPage_entry"
+        elif url_range == "example":
+            selector == "#searchPage_example"
+        else:
+            selector = None
+    else:
+        # Handle other regions or return None for unsupported case
+        selector = None
+
+    print(f"Selector: {selector}")
+    return selector
 
 # Asynchronous function to scrape Naver dictionary pages
 async def scrape_page(korean_word: str, region: str, url_range: str):
@@ -30,12 +53,14 @@ async def scrape_page(korean_word: str, region: str, url_range: str):
 
     # Sets the range parameter, if none is provided, it will be an empty string
     if url_range:
-        url_range = f"range={url_range}"
+        range_tag = f"range="
+        url_range = f"{url_range}"
     else:
+        range_tag = ""
         url_range = ""
     
     # Set the url for Naver's dictionary search. The region, range, and query parameters needs to be URL-encoded.
-    url = f"https://{region}.dict.naver.com/#/search?{url_range}&query={quote(korean_word)}"
+    url = f"https://{region}.dict.naver.com/#/search?{range_tag}{url_range}&query={quote(korean_word)}"
 
     # Set a User-Agent header to mimic a web browser. This can help prevent
     # being blocked by the website.
@@ -48,38 +73,42 @@ async def scrape_page(korean_word: str, region: str, url_range: str):
     delay = 2 # The initial delay in seconds between retries
     backoff_factor = 2 # Multiples the delay for each subsequent retry
 
-    for attempt in range(retries):
-        try:
-            # Set a timeout for the request to avoid indefinite waiting.
-            # A longer timeout gives the server more time to respond.
-            response = requests.get(url, timeout=10, headers=headers) 
+    async with httpx.AsyncClient() as client:
+        for attempt in range(retries):
+            async with REQUEST_SEMAPHORE:
+                try:
+                    # Set a timeout for the request to avoid indefinite waiting.
+                    # A longer timeout gives the server more time to respond.
+                    response = await client.get(url, timeout=10, headers=headers) 
 
-            # Raise an HTTPError for bad responses (4xx or 5xx)
-            response.raise_for_status() 
+                    # Raise an HTTPError for bad responses (4xx or 5xx)
+                    response.raise_for_status() 
 
-            # Await dynamic page rendering
-            html_content = await render_dynamic_page(url)
+                    # Await dynamic page rendering
+                    print(f"url_range: {url_range}")
+                    selector = set_selector(region, url_range) # Set page selector to wait to load
+                    html_content = await render_dynamic_page(url, selector)
 
-            # Parse the HTML content of the page
-            soup = BeautifulSoup(html_content, 'html.parser')
+                    # Parse the HTML content of the page
+                    soup = BeautifulSoup(html_content, 'html.parser')
 
-            # Return the parsed soup object for further processing
-            return soup
+                    # Return the parsed soup object for further processing
+                    return soup
 
-        # Print out error messages for debugging
-        except requests.exceptions.RequestException as e:
-            # Handle different types of request errors, including timeouts
-            print(f"Attempt {attempt + 1}/{retries} failed for {url}: {e}")
-            if attempt < retries - 1:
-                print(f"Retrying in {delay} seconds...")
-                time.sleep(delay)
-                delay *= backoff_factor
-            else:
-                print(f"All {retries} attempts failed. Giving up.")
-                return None
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return None
+                # Print out error messages for debugging
+                except httpx.RequestError as e:
+                    # Handle different types of request errors, including timeouts
+                    print(f"Attempt {attempt + 1}/{retries} failed for {url}: {e}")
+                    if attempt < retries - 1:
+                        print(f"Retrying in {delay} seconds...")
+                        await asyncio.sleep(delay)
+                        delay *= backoff_factor
+                    else:
+                        print(f"All {retries} attempts failed. Giving up.")
+                        return None
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
+                    return None
 
 def parse_english_word_idiom(soup: BeautifulSoup):
     '''Parses the English dictionary "Word · Idiom" page to extract relevant information.
@@ -94,6 +123,12 @@ def parse_english_word_idiom(soup: BeautifulSoup):
     '''
     # Isolate the main content area of the dictionary page
     content_tag = soup.find("div", id="searchPage_entry")
+
+    # Return an empty list if the content tag is not found
+    if not content_tag:
+        return []
+    
+    # Filter content from content_tag
     content = content_tag.find("div", class_="component_keyword")
     
     # Find all entry rows within the content
@@ -158,6 +193,11 @@ def parse_english_examples(soup: BeautifulSoup):
     '''
     # Isolate the main content area of the dictionary page
     content_tag = soup.find("div", id="searchPage_example")
+
+    # Return an empty list if the content tag is not found
+    if not content_tag:
+        return []
+    
     content = content_tag.find("div", class_="component_example")
 
     # Find all example rows within the content
