@@ -45,6 +45,35 @@ def connect_to_server():
         print(f"ERROR: Authentication failed. Please check the username and password.")
         print(f"Authentication Error: {e}")
         return None
+    
+def retrieve_collection(client):
+    """
+    Retrieves a MongoDB collection
+
+    Args:
+        client (pymongo.MongoClient): Represents the direct, authenticated connection to your
+            MongoDB server. You can think of it as the main entry point for all your
+            database operations.
+    
+    Returns:
+        collection: The collection intended for retrieval inside the MongoDB database
+    """
+    # Retrieve name of the database set as a Python environment variable
+    MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "korean_words")
+
+    if not ([MONGO_DB_NAME]):
+        print("ERROR: Missing MongoDB NAME in environment variables.")
+        return None
+
+    try:
+        db = client[MONGO_DB_NAME]
+        collection = db["korean_words"]
+
+        return collection
+
+    except Exception as e:
+        print(f"Error during collection initialization: {e}")
+        return None
 
 def initialize_collection(client):
     """
