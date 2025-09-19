@@ -69,7 +69,7 @@ def set_entry(db_collection: Collection, word: str, key: str, value):
 
 def query_entry(db_collection: Collection, word: str, key: str):
     """
-    Retreieve value for the specified attribute for KoreanWord instance in the MongoDB collection
+    Retrieve value for the specified attribute for a KoreanWord instance in the MongoDB collection
     """
     db_collection.find_one(
         {"word": word},

@@ -4,9 +4,14 @@ from pymongo.collection import Collection
 # Internal library methods imports
 from db.crud import query_entry
 
+def query_hanja(korean_word: str):
+    korean_word
+
 def query_en_definition(collection: Collection, korean_word: str):
     # Retrieve value from word data
+    #
     collection.find().sort("update_at", -1).limit(1)
+    
     query_entry(collection, korean_word, )
     korean_word
     """
@@ -20,9 +25,6 @@ def query_en_definition(collection: Collection, korean_word: str):
     """
 
 def query_en_example(korean_word: str):
-    korean_word
-
-def query_hanja(korean_word: str):
     korean_word
 
 korean_word = "라면"

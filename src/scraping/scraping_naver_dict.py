@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 # Internal library methods imports
 from scraping.scraping_dynamic import render_dynamic_page
+from db.models import ScrapedPage
 
 # Initialize a semaphore to limit concurrent requests
 # Adjust the value (e.g., 5) to control the number of simultaneous tasks.
@@ -21,12 +22,12 @@ def set_selector(region: str, url_range: str):
     Returns the appropriate CSS selector for a given region and URL range.
     Returns None if no matching selector is found.
     """
-    selector = ""
+    selector = None
     if region == "en":
         if url_range == "word":
             selector = "#searchPage_entry"
         elif url_range == "example":
-            selector == "#searchPage_example"
+            selector = "#searchPage_example"
         else:
             selector = None
     else:
@@ -86,14 +87,17 @@ async def scrape_page(korean_word: str, region: str, url_range: str):
 
                     # Await dynamic page rendering
                     print(f"url_range: {url_range}")
-                    selector = set_selector(region, url_range) # Set page selector to wait to load
-                    html_content = await render_dynamic_page(url, selector)
+                    selector = set_selector(region, url_range) # Set page selector to wait to load for
 
-                    # Parse the HTML content of the page
-                    soup = BeautifulSoup(html_content, 'html.parser')
+                    if selector:
+                        # Await playwright to render javascript elements
+                        html_content = await render_dynamic_page(url, selector)
 
-                    # Return the parsed soup object for further processing
-                    return soup
+                        # Parse the HTML content of the page
+                        soup = BeautifulSoup(html_content, 'html.parser')
+
+                        # Return the parsed soup object for further processing
+                        return soup
 
                 # Print out error messages for debugging
                 except httpx.RequestError as e:
@@ -265,24 +269,23 @@ async def scrape_naver_dict(korean_word):
     en_word_idiom_soup = await scrape_page(korean_word, "en", "word")
     if en_word_idiom_soup:
         en_word_idiom_page_data = parse_english_word_idiom(en_word_idiom_soup)
-        page_data.append({
+        page_data.append(ScrapedPage({
             "source_name": "Naver Dictionary",
             "source_url": "naver.dict.com",
             "source_region": "en",
             "source_page": "word_idiom",
-            "page_data": en_word_idiom_page_data})
+            "page_data": en_word_idiom_page_data}))
     
     # Scrape Naver's Korean-English Dictionary's "Examples" page
     en_example_soup = await scrape_page(korean_word, "en", "example")
     if en_example_soup:
         en_example_page_data = parse_english_examples(en_example_soup)
-        page_data.append({
+        page_data.append(ScrapedPage({
             "source_name": "Naver Dictionary",
             "source_url": "naver.dict.com",
             "source_region": "en",
             "source_page": "example",
-            "page_data": en_example_page_data
-            })
+            "page_data": en_example_page_data}))
     
     # Prepare return data as a list    
     return page_data

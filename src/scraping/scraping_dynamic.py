@@ -14,7 +14,7 @@ async def render_dynamic_page(url, selector: str):
 
             # Wait for the key element to appear.
             if selector:
-                print(f"Waitinf for selector: {selector}")
+                print(f"Waiting for selector: {selector}")
                 await page.wait_for_selector(selector, timeout=10000)
             else:# Fallback to waiting for the DOM if no selector is provided
                 print("No specific selector provided. Waiting for 'domcontentloaded'...")
@@ -26,7 +26,7 @@ async def render_dynamic_page(url, selector: str):
 
             return html_content
         except Exception as e:
-            print(f"Error redering dynamic page: {e}")
+            print(f"Error rendering dynamic page: {e}")
             return None
         finally:
             # Ensure the browser is always closed, even if an error occurs.

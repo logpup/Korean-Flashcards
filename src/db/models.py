@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 import datetime
 
 @dataclass
-class ScrapeData:
+class ScrapedPage:
     """
     A data class to represent scraped data from a webpage
     """
@@ -11,13 +11,22 @@ class ScrapeData:
     # Core data information, required for every entry
     source_url: str
     source_name: str # e.g., "Naver Dictionary", "Korena API"
+    source_region: str
+    source_page: str
 
-    # List of entries to store for each page scraped
-    entries: List[Dict] = field(default_factory=list)
+    # List of entries on a given page
+    page_data: List[Dict] = field(default_factory=list)
 
     # Timestamps for tracking when the data was added or last updated
     created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+
+    def __post_init__(self):
+        """
+        Sets the 'updated_at' timestamp to match 'created_at' upon initialization.
+        This ensures both timestamps are identical when a new entry is created.
+        """
+        self.updated_at = self.created_at
 
 @dataclass
 class KoreanWord:
@@ -41,3 +50,10 @@ class KoreanWord:
     # Timestamps for tracking when the data was added or last updated
     created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+
+    def __post_init__(self):
+        """
+        Sets the 'updated_at' timestamp to match 'created_at' upon initialization.
+        This ensures both timestamps are identical when a new entry is created.
+        """
+        self.updated_at = self.created_at

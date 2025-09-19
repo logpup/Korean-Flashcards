@@ -4,7 +4,7 @@ from pymongo.errors import OperationFailure
 
 from db.connection import connect_to_server, initialize_collection, retrieve_collection
 from db.crud import create_entry, delete_entry, entry_exists, update_entry, append_entry, print_all_documents
-from db.models import ScrapeData, KoreanWord
+from db.models import ScrapedPage, KoreanWord
 from scraping.scraping_naver_dict import scrape_naver_dict
 
 # Connect to server and initialize the korean_words collection
@@ -14,7 +14,7 @@ collection = retrieve_collection(client)
 if collection is not None:
     try:
         # Example data for this test
-        korean_word = "노출"
+        korean_word = "만족"
 
         # Create entry if word does not exist
         if not entry_exists(collection, korean_word):
