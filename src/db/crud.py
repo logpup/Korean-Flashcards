@@ -69,10 +69,12 @@ def set_value(db_collection: Collection, word: str, key: str, value):
     """
     Set the entry for a KoreanWord instance in the MongoDB collection.
     """
-    db_collection.update_one(
+    db_collection.update_many(
         {"word": word},         # Find the document by the 'word' field
-        {"$set": {key, value}}, # Set the specified attribute with the value
-        {"last_update": datetime.datetime.now()}
+        {"$set": {
+            key: value, # Set the specified attribute with the value,
+            "updated_at": datetime.datetime.now() # Clock in new update to the word document
+        }}
     )
 
     # If first instance, also set created_at value
@@ -84,7 +86,7 @@ def set_value(db_collection: Collection, word: str, key: str, value):
     if not created:
         db_collection.update_one(
             {"word": word},
-            {"$set": {"created_at", datetime.datetime.now()}}
+            {"$set": {"created_at": datetime.datetime.now()}}
         )
 
 def get_value(db_collection: Collection, word: str, key: str):
