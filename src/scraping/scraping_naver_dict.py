@@ -269,23 +269,23 @@ async def scrape_naver_dict(korean_word):
     en_word_idiom_soup = await scrape_page(korean_word, "en", "word")
     if en_word_idiom_soup:
         en_word_idiom_page_data = parse_english_word_idiom(en_word_idiom_soup)
-        page_data.append(ScrapedPage({
-            "source_name": "Naver Dictionary",
-            "source_url": "naver.dict.com",
-            "source_region": "en",
-            "source_page": "word_idiom",
-            "page_data": en_word_idiom_page_data}))
+        page_data.append(ScrapedPage(
+            source_name = "Naver Dictionary",
+            source_url = "naver.dict.com",
+            source_region = "en",
+            source_page = "word_idiom",
+            page_data = en_word_idiom_page_data))
     
     # Scrape Naver's Korean-English Dictionary's "Examples" page
     en_example_soup = await scrape_page(korean_word, "en", "example")
     if en_example_soup:
         en_example_page_data = parse_english_examples(en_example_soup)
-        page_data.append(ScrapedPage({
-            "source_name": "Naver Dictionary",
-            "source_url": "naver.dict.com",
-            "source_region": "en",
-            "source_page": "example",
-            "page_data": en_example_page_data}))
+        page_data.append(ScrapedPage(
+            source_name = "Naver Dictionary",
+            source_url = "naver.dict.com",
+            source_region = "en",
+            source_page = "example",
+            page_data = en_example_page_data))
     
     # Prepare return data as a list    
     return page_data

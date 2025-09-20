@@ -3,7 +3,7 @@ import urllib.parse
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-def connect_to_server():
+def connect_server():
     """
     Establishes an authenticated connection to the MongoDB server. Uses environment
     variables for credential for security.

@@ -2,13 +2,13 @@ import asyncio
 
 from pymongo.errors import OperationFailure
 
-from db.connection import connect_to_server, initialize_collection, retrieve_collection
-from db.crud import create_entry, delete_entry, entry_exists, update_entry, append_entry, print_all_documents
+from db.connection import connect_server, initialize_collection, retrieve_collection
+from db.crud import create_document, delete_document, document_exists, update_value, append_value, print_all_documents
 from db.models import ScrapedPage, KoreanWord
 from scraping.scraping_naver_dict import scrape_naver_dict
 
 # Connect to server and initialize the korean_words collection
-client = connect_to_server()
+client = connect_server()
 collection = retrieve_collection(client)
 
 if collection is not None:
@@ -17,16 +17,16 @@ if collection is not None:
         korean_word = "만족"
 
         # Create entry if word does not exist
-        if not entry_exists(collection, korean_word):
+        if not document_exists(collection, korean_word):
             word_obj = KoreanWord(
                  word=korean_word,
             )
-            create_entry(collection, word_obj)
+            create_document(collection, word_obj)
 
         # Append data if entry exists     
         word_data = asyncio.run(scrape_naver_dict(korean_word))
         for data in word_data:
-            append_entry(collection, korean_word, "word_data", data)
+            append_value(collection, korean_word, "word_data", data)
             
     except OperationFailure as e:
         print(f"ERROR: Operation failed. {e}")

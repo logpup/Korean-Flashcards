@@ -1,18 +1,21 @@
 # Python standard library imports
 import datetime
+from dataclasses import asdict, is_dataclass
+from typing import Dict, Any
 
 # Third-part library imports
 from pymongo.collection import Collection
 
-from db.models import ScrapeData, KoreanWord
+# Internal library methods imports
+from db.models import ScrapedPage, KoreanWord
 
-def entry_exists(db_collection: Collection, word: str) -> bool:
+def document_exists(db_collection: Collection, word: str) -> bool:
     """
     Returns True if an entry for the given word exists in the collection.
     """
     return db_collection.find_one({"word": word}) is not None
 
-def create_entry(db_collection: Collection, korean_word: KoreanWord):
+def create_document(db_collection: Collection, korean_word: KoreanWord):
     """
     Inserts a KoreanWord instance into the MongoDB collection.
     """
@@ -21,13 +24,13 @@ def create_entry(db_collection: Collection, korean_word: KoreanWord):
     # Inserts KoreanWord data type into collection
     db_collection.insert_one(word_dict)
 
-def delete_entry(db_collection: Collection, word: str):
+def delete_document(db_collection: Collection, word: str):
     """
     Delete a KoreanWord entry from the MongoDB collection by word.
     """
     db_collection.delete_one({"word": word})
     
-def update_entry(db_collection: Collection, word: str, key: str, value):
+def update_value(db_collection: Collection, word: str, key: str, value):
     """
     Update a KoreanWord entry in the collection by word and attribute name.
     """
@@ -36,16 +39,33 @@ def update_entry(db_collection: Collection, word: str, key: str, value):
         {"$set": {key: value}}    # Set the specified attribute to the new value
     )
 
-def append_entry(db_collection: Collection, word: str, key: str, value):
+def append_value(db_collection: Collection, word: str, key: str, value):
     """
-    Append an entry for a KoreanWord instance in the MongoDB collection.
+    Appends an entry to an attribute of a document in a MongoDB collection.
+
+    This function finds a document by a specified word and appends a new entry
+    to a list within that document. The value to be appended is converted to a
+    dictionary if it's a dataclass instance.
+
+    Args:
+        db_collection: The MongoDB collection object.
+        word: The value of the 'word' field to find the document.
+        key: The attribute (field) to which the new entry will be appended.
+        value: The new entry to append to the list. This can be a dictionary
+               or a dataclass instance.
     """
+     # Check if the value is a dataclass instance and convert it to a dictionary
+    # if it is. This is necessary because PyMongo cannot directly serialize
+    # dataclass objects.
+    if is_dataclass(value):
+        value = asdict(value)
+
     db_collection.update_one(
         {"word": word},         # Find the document by the 'word' field
         {"$push": {key: value}} # Append the speciied attribute with new entry
     )
 
-def set_entry(db_collection: Collection, word: str, key: str, value):
+def set_value(db_collection: Collection, word: str, key: str, value):
     """
     Set the entry for a KoreanWord instance in the MongoDB collection.
     """
@@ -67,14 +87,24 @@ def set_entry(db_collection: Collection, word: str, key: str, value):
             {"$set": {"created_at", datetime.datetime.now()}}
         )
 
-def query_entry(db_collection: Collection, word: str, key: str):
+def get_value(db_collection: Collection, word: str, key: str):
     """
     Retrieve value for the specified attribute for a KoreanWord instance in the MongoDB collection
     """
-    db_collection.find_one(
-        {"word": word},
-        {key: 1, "id_": 0}
-    )
+    query = {"word": word}
+    # Dynamically create the projection dictionary
+    # This tells MongoDB to return only the requested field and exclude the _id field.
+    projection = {key: 1, "_id": 0}
+
+    document = db_collection.find_one(query, projection)
+
+    if document:
+        # Return the attribute value from the found document
+        return document.get(key)
+    else:
+        # Return None if no value was found
+        print(f"No value for '{key}' found in the document for the word: '{word}'")
+        return None
 
 def print_all_documents(collection):
     """
@@ -106,3 +136,5 @@ def print_all_documents(collection):
         # However, in this simple script, the client goes out of scope anyway.
         # For a more complex application, client.close() is recommended.
         pass
+
+# Tests
