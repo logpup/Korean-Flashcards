@@ -193,8 +193,9 @@ def query_anki_flashcard_data(collection: Collection, korean_word: str):
         korean_word: The Korean word to retrieve flashcard data for.
 
     Returns:
-        flashcard_data: A dictionary containing two keys: "entries" for hanja-idiom
-                   pairs and "examples" for English-Korean sentence examples.
+        flashcard_data: A dictionary containing three keys: "korean_word" for the
+                   specified word, "entries" for the hanja-idiom pairs and "examples"
+                   for English-Korean sentence examples.
     """
 
     # Retrieve values from the database
@@ -222,17 +223,15 @@ def query_anki_flashcard_data(collection: Collection, korean_word: str):
     # Initialize flashcard dictionary to hold the list of entries and examples
     flashcard_data = {"korean_word": korean_word, "entries": entries, "examples": examples}
 
-    pprint.pprint(f"Flashcard: {flashcard_data}")
+    # print(f"Flashcard: {flashcard_data}")
     return flashcard_data
 
-def print_quizlet_entry(flashcard: Dict[str, Any]):
-    flashcard
 # Connect to server and initialize the korean_words collection
 client = connect_server()
 collection = retrieve_collection(client)
-korean_word = "만족"
+korean_word = "가을"
 
-query_flashcard_data(collection, korean_word)
+query_anki_flashcard_data(collection, korean_word)
 
 
 """

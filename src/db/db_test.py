@@ -2,19 +2,21 @@ import asyncio
 
 from pymongo.errors import OperationFailure
 
-from db.connection import connect_server, initialize_collection, retrieve_collection
-from db.crud import create_document, delete_document, document_exists, update_value, append_value, print_all_documents
+from db.connection import connect_server, retrieve_collection
+from db.crud import create_document, document_exists, append_value
 from db.models import ScrapedPage, KoreanWord
 from scraping.scraping_naver_dict import scrape_naver_dict
+
 
 # Connect to server and initialize the korean_words collection
 client = connect_server()
 collection = retrieve_collection(client)
 
 if collection is not None:
+    
     try:
         # Example data for this test
-        korean_word = "만족"
+        korean_word = "인정"
 
         # Create entry if word does not exist
         if not document_exists(collection, korean_word):
