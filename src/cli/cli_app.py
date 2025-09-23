@@ -1,69 +1,137 @@
-# Python standard library imports
-import argparse
-import os
+# Standard Python library imports
+from pathlib import Path
+import datetime
+import asyncio
 
-# Imported methods from other pages
-from db.connection import setup_database
+# Third-party external library imports
+import typer
+from typing import Optional
+from rich.console import Console
+from InquirerPy import inquirer
+from InquirerPy.exceptions import InvalidArgument
+from pymongo.errors import OperationFailure
+
+# Internal library methods imports
 from data_utils.data_loader import import_candidate_file
-from logic.logic_processor import populate_flaschard_data
-from utils.utils_export import export_flashcard_data
-from scraping.scraping_naver_dict import scrape_naver_dict
+from db.connection import connect_server, retrieve_collection
+from db.crud import document_exists, create_document, append_value
+from logic.logic_lookup import lookup_entry
+from logic.logic_processor import set_word_attributes, query_anki_flashcard_data
+from db.models import KoreanWord
+from anki.card_generator import create_anki_card
 
-def cli_prompt():
+
+# Create a Typer app instance
+app = typer.Typer(
+    name="dolphin",
+    help="A Korean flashcard generation CLI app."
+)
+
+# Use a Rich console for pretty printing
+console = Console()
+
+@app.command(
+    name="generate",
+    help="Generates a flashcard file from an input file." 
+)
+def generate_flashcards(
+    input_file: Path = typer.Argument(
+        ..., help="Name of file with list of Korean words."
+    ),
+    directory: Optional[Path] = typer.Option(
+        None, "--directory", "-d", help="The directory to save the output file."
+    ),
+    filename: Optional[str] = typer.Option(
+        None, "--filename", "-f", help="The name of the output flashcard file."
+    ),
+    type: Optional[str] = typer.Option(
+        None, "--type", "-t", help="The type of flashcard file to generate (e.g. Anki, Quizlet)"
+    ),
+):
     """
-    Main entry point for the flashcard generator CLI.
-
-    Example:
-    python src/main.py generate <input_file> --output-dir <output_directory>
+    Process an input file to generate a flashcard file
     """
-    # 1. Create the top-level parser
-    parser = argparse.ArgumentParser(
-        description="A CLI tool to generate flashcards from a list of Korean words.",
-        epilog="Example: python main.py generate data/words.csv --output-dir flashcards"
-    )
+    console.print(f"\n[bold green]Processing input file:[/] {input_file}")
+    
+    # Save Korean words from an input file to a list
+    word_list = import_candidate_file(input_file)
 
-    # 2. Add sub-commands for different actions
-    # 'generate' will be a positional argument
-    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+    # Connect to the MongoDB server and retrieve specified collection
+    client = connect_server()
+    collection = retrieve_collection(client)
 
-    # 3. Create a parser for the "generate" command
-    scrape_parser = subparsers.add_parser(
-        "scrape",
-        help="Scrape websites for data concering the Korean words provided in a list from an input file."
-    )
-    scrape_parser.add_argument(
-        "filepath",
-        type=str,
-        help="Path to the input file (e.g., .csv, .txt)."
-    )
+    # Seperate words already in the server from new words to scrape
+    console.print("[bold blue]Checking to see which words are already in stored in the database...[/]")
+    
+    if collection is not None:
+        try:
+            # Initialize variables to hold seperate list of words
+            existing_words = []
+            new_words_list = []
 
-    # 4. Parse the arguments
-    args = parser.parse_args()
+            for word in word_list:
+                if document_exists(collection, word):
+                    existing_words.append(word)
+                else:
+                    new_words_list.append(word)
 
-    # 5. Handle the command based on the parsed arguments
-    if args.command == "scrape":
+            # Iterate through list of words and source data entries
+            console.print("[bold blue]Scraping various sources for data on Korean words and phrases...[/]")
+            
+            # Initalize list to hold deck of flashcards
+            deck_data = []
+            
+            for new_word in new_words_list:
 
-        print(f"Starting to scrape data online for words listed: {args.filepath}")
+                # Create entry in database if word document does not exist
+                if not document_exists(collection, new_word):
+                    word_obj = KoreanWord(
+                        word=new_word,
+                    )
+                    create_document(collection, word_obj)
+                    
+                    word_data = lookup_entry(new_word) # Search through sources
+                    for data in word_data:
+                        append_value(collection, new_word, "word_data, data")
+                    set_word_attributes(collection, new_word) # Set word attributes in database
 
-        # Check if the file exists before proceeding
-        if not os.path.exists(args.filepath):
-            print(f"Error: The file '{args.filepath}' does not exist.")
-            return
+                # Append data to the database if entry already exists     
+                else:
+                    word_data = lookup_entry(new_word) # Search through sources
+                    for data in word_data:
+                        append_value(collection, new_word, "word_data", data)
+                    set_word_attributes(collection, new_word) # Set word attributes in database
+                
+                flashcard_data = query_anki_flashcard_data(collection, new_word)
+                note = create_anki_card(flashcard_data)
+                deck_data.append(note)
 
-        # Load the data from the specified file
-        words = import_candidate_file(args.filepath)
+            # ----
+            try:
+                selected_words = inquirer.checkbox(
+                    message="Select the word to include in the "
+                )
+            
 
-        # Initialize variable to hold list of found word data
-        word_data = []
+        except OperationFailure as e:
+            print(f"ERROR: Operation failed. {e}")
+        
+        finally:
+            # Close the connection cleanly
+            if collection is not None:
+                collection.database.client.close()
+                print("\nDatabase connection closed.")
+    else:
+        print("Could not proceed with database operations due to a connection error.")
 
-        # Scrape data to populate word entries
-        if not words.empty:
-            print(f"Processing {len(words)} words...")
-            for korean_word in words:
-                word_data.append(scrape_naver_dict(korean_word))
-        else:
-            print("No words in list to process. Exiting.")
+    
 
-        # Setup MongoDB database and start connection
-        collection = setup_database()
-        # <--- we're here trying to pass data on to the database
+    if directory and filename:
+        output_file_path = directory / filename
+        console.print(f"[bold blue]Exporting flashcard file to:[/] {output_file_path}")
+        console.print(f"[bold blue]Flashcard type selected:[/] {type}")
+        # Here you would add the logic to export the file to the specified path
+    else:
+        console.print("[bold yellow]Note:[/] Output directory and filename not specified. No file will be saved.")
+
+app()

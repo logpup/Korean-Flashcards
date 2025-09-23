@@ -4,7 +4,7 @@ from pymongo.errors import OperationFailure
 
 from db.connection import connect_server, retrieve_collection
 from db.crud import create_document, document_exists, append_value
-from db.models import ScrapedPage, KoreanWord
+from db.models import KoreanWord
 from scraping.scraping_naver_dict import scrape_naver_dict
 
 

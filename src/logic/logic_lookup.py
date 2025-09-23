@@ -1,4 +1,7 @@
-import pandas as pd
+# Standard Python library imports
+import asyncio
+
+# Internal library methods imports
 from scraping.scraping_naver_dict import scrape_naver_dict
 
 def lookup_entry(korean_word):
@@ -10,9 +13,9 @@ def lookup_entry(korean_word):
         korean_word (string): The Korean word to search for
 
     Returns:
-        document: A list containing the scraped data.
+        document: A list containing dictionaries containing the scraped data.
             Returns None if the word is not found or an error occurs.
     """
-    document = scrape_naver_dict(korean_word)
+    document = asyncio.run(scrape_naver_dict(korean_word))
 
     return document
