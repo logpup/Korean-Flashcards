@@ -1,5 +1,8 @@
-import pandas as pd
+# Standard Python Library Imports
 import os
+
+# Third-Party External Library Imports
+from bs4 import BeautifulSoup
 
 def import_candidate_file(filepath):
     """
@@ -9,8 +12,7 @@ def import_candidate_file(filepath):
         filepath (str): The path to the file containing the word list.
         
     Returns:
-        pd.DataFrame: A DataFrame with 'korean_word' and 'english_definition' columns,
-                      or an empty DataFrame if the file type is not supported or an error occurs.
+        word_list: A list of Korean words for futher processing
     """
     file_extension = os.path.splitext(filepath)[1].lower()
 
@@ -20,7 +22,8 @@ def import_candidate_file(filepath):
         return _import_html(filepath)
     else:
         print(f"❌ Error: Unsupported file type: {file_extension}")
-        return pd.DataFrame()
+        word_list = []  # Initialize empty list to send back if there is an error
+        return word_list
 
 def _import_txt(filepath):
     """
@@ -32,17 +35,18 @@ def _import_txt(filepath):
     3. Filters out any empty lines.
     4. Create a pandas DataFrame where the cleaned lines are stored in the first column.
     """
+    word_list = []  # Initalize empty list to send back if there is an error
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             lines = [line.strip().split(',', 1) for line in f if line.strip()]
-            df = pd.DataFrame(lines, columns=['korean_word'])
-            return df
+            word_list = lines
+            return word_list
     except FileNotFoundError:
         print(f"Error: The file at '{filepath}' was not found.")
-        return pd.DataFrame()
+        return word_list
     except Exception as e:
         print(f"❌ Error importing TXT: {e}")
-        return pd.DataFrame()
+        return word_list
 
 def _import_html(filepath):
     """
@@ -57,17 +61,35 @@ def _import_html(filepath):
        first column.
     """
     try:
+        # Use a 'with' statement to open and read the file
         with open(filepath, 'r', encoding='utf-8') as f:
-            lines = [line.strip() for line in f if line.strip()]
+            html_content = f.read()
 
-        # Create a DataFrame from the list of lines
-        df = pd.DataFrame(lines, columns=['line_content'])
-        
-        return df
+        # Create the Beautiful Soup object for parsing
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Find the <body> tag
+        body_tag = soup.body
+
+        word_list = []  # Initialize empty list to send back if there is an error
+
+        if body_tag:
+            # Convert the body_tag object to a string before using replace()
+            body_tag_string = body_tag.prettify()
+
+            # Delete <body tags and replace them with an empty string
+            body_tag_string = body_tag_string.replace('<body>', '').replace('</body>', '')
+            # Replace <br> tags with a newline character for easy splitting
+            clean_content = body_tag_string.replace('<br/>', '\n').replace('<br>', '\n').replace('<br />', '\n')
+           
+            # Split the string by the newline characters
+            word_list = [word.strip() for word in clean_content.splitlines() if word.strip()]
+
+            return word_list
     
     except FileNotFoundError:
         print(f"Error: The file at '{filepath}' was not found.")
-        return pd.DataFrame()
+        return word_list
     except Exception as e:
         print(f"❌ Error importing HTML: {e}")
-        return pd.DataFrame()
+        return word_list
