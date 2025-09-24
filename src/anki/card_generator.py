@@ -1,8 +1,10 @@
 # Standard Library Imports
 import time
 import os
-from typing import Dict, List
+import datetime
+from typing import Dict, List, Optional
 import unicodedata
+from pathlib import Path
 
 # Third Party Library Imports
 import pprint
@@ -147,7 +149,7 @@ def create_anki_card(word_data: Dict) -> genanki.Note:
 
     return my_note
 
-def create_anki_deck(deck_name: str, cards: List[genanki.Note], output_filepath: str):
+def create_anki_deck(deck_name: str, cards: List[genanki.Note], deck_path: str):
     """
     Collates a list of Genanki Notes (cards) into a single Anki deck file (.apkg).
 
@@ -162,14 +164,38 @@ def create_anki_deck(deck_name: str, cards: List[genanki.Note], output_filepath:
 
     # Create the deck container.
     my_deck = genanki.Deck(deck_id, deck_name)
-
     # Add each card to the deck.
     for card in cards:
         my_deck.add_note(card)
 
     # Package the deck into an .apkg file.
     try:
-        genanki.Package(my_deck).write_to_file(output_filepath)
-        print(f"Successfully created Anki deck: '{output_filepath}'")
+        genanki.Package(my_deck).write_to_file(deck_path)
+        print(f"Successfully created Anki deck: '{deck_path}'")
     except Exception as e:
         print(f"An error occurred while writing the deck: {e}")
+
+def export_anki_file(deck_data: List, fn: Optional[str], dir: Optional[Path]):
+    deck_name = ""
+    filename = ""
+    directory = ""
+
+    if fn:
+        deck_name = filename
+        fn = f"{deck_name}.apkg"
+    else:
+        # Format date output
+        now = datetime.datetime.now()
+        formatted_date = now.strftime("%Y-%m-%d-%H-%M-%S")
+        # Set as deck and file names
+        deck_name = f"flashcards-{formatted_date}"
+        fn = f"{deck_name}.apkg"
+            
+    if directory:
+        dir = directory
+    else:
+        dir = "."
+
+    deck_path = f"{dir}/{fn}"
+            
+    create_anki_deck(deck_name, deck_data, deck_path)

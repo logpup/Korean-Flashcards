@@ -133,7 +133,7 @@ def retrieve_hanja(collection: Collection, korean_word: str):
 def set_word_attributes(collection: Collection, korean_word: str):
     hanja = retrieve_hanja(collection, korean_word)
     en_definition = retrieve_en_definition(collection, korean_word)
-    en_example_sentence = retrieve_en_example(collection, korean_word)
+    en_example_sentence = retrieve_en_examples(collection, korean_word)
 
     set_value(collection, korean_word, "hanja", hanja)
     set_value(collection, korean_word, "en_definition", en_definition)
