@@ -18,7 +18,7 @@ from db.crud import document_exists, create_document, append_value
 from logic.logic_lookup import lookup_entry
 from logic.logic_processor import set_word_attributes, query_anki_flashcard_data
 from db.models import KoreanWord
-from anki.card_generator import create_anki_card
+from anki.card_generator import create_anki_card, create_anki_deck
 
 
 # Create a Typer app instance
@@ -92,7 +92,7 @@ def generate_flashcards(
                     
                     word_data = lookup_entry(new_word) # Search through sources
                     for data in word_data:
-                        append_value(collection, new_word, "word_data, data")
+                        append_value(collection, new_word, "word_data", data)
                     set_word_attributes(collection, new_word) # Set word attributes in database
 
                 # Append data to the database if entry already exists     
@@ -105,13 +105,48 @@ def generate_flashcards(
                 flashcard_data = query_anki_flashcard_data(collection, new_word)
                 note = create_anki_card(flashcard_data)
                 deck_data.append(note)
-
-            # ----
-            try:
-                selected_words = inquirer.checkbox(
-                    message="Select the word to include in the "
-                )
             
+            try:
+                selected_words_list = inquirer.checkbox(
+                    message="These words are already in the database. Select which entries you would still want to include for this deck.",
+                    choices=existing_words,
+                ).execute()
+
+                for selected_word in selected_words_list:
+                    word_data = lookup_entry(selected_word) # Search through sources
+                    for data in word_data:
+                        append_value(collection, selected_word, "word_data", data)
+                    set_word_attributes(collection, selected_word) # Set word attributes in database
+                
+                    flashcard_data = query_anki_flashcard_data(collection, selected_word)
+                    note = create_anki_card(flashcard_data)
+                    deck_data.append(note)
+
+            except KeyboardInterrupt:
+                print("\n\nOperation cancelled by user. Exiting...")
+            except EOFError:
+                print("\n\nEnd of input received. Exiting...")
+
+            # Finally, export ankifile
+            deck_name = ""
+            fn = ""
+            dir = ""
+
+            if filename:
+                deck_name = filename
+                fn = f"{deck_name}.apkg"
+            else:
+                deck_name = f"flashcards-{datetime.datetime.now()}"
+                fn = f"{deck_name}.apkg"
+            
+            if directory:
+                dir = directory
+            else:
+                dir = "./"
+
+            deck_path = f"{dir}/{fn}"
+            
+            create_anki_deck(deck_name, deck_data, deck_path)
 
         except OperationFailure as e:
             print(f"ERROR: Operation failed. {e}")
