@@ -20,7 +20,6 @@ from db.models import KoreanWord
 from anki.card_generator import create_anki_card, export_anki_file
 from cli.cli_inquirer import ask_to_aggregate_data
 
-
 # Create a Typer app instance
 app = typer.Typer(
     name="dolphin",
