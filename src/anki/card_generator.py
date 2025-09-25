@@ -149,7 +149,7 @@ def create_anki_card(word_data: Dict) -> genanki.Note:
 
     return my_note
 
-def create_anki_deck(deck_name: str, cards: List[genanki.Note], deck_path: str):
+def create_anki_deck(deck_name: str, cards: List[genanki.Note], deck_path: Path):
     """
     Collates a list of Genanki Notes (cards) into a single Anki deck file (.apkg).
 
@@ -178,24 +178,29 @@ def create_anki_deck(deck_name: str, cards: List[genanki.Note], deck_path: str):
 def export_anki_file(deck_data: List, fn: Optional[str], dir: Optional[Path]):
     deck_name = ""
     filename = ""
-    directory = ""
-
+    
+    # Handle filename
     if fn:
-        deck_name = filename
-        fn = f"{deck_name}.apkg"
+        deck_name = fn
+        filename = f"{deck_name}.apkg"
     else:
         # Format date output
         now = datetime.datetime.now()
         formatted_date = now.strftime("%Y-%m-%d-%H-%M-%S")
         # Set as deck and file names
         deck_name = f"flashcards-{formatted_date}"
-        fn = f"{deck_name}.apkg"
-            
-    if directory:
-        dir = directory
+        filename = f"{deck_name}.apkg"
+    
+    # Handle directory
+    if dir and str(dir) != ".":  # Check if dir parameter was provided and not default
+        directory_path = Path(dir)
     else:
-        dir = "."
-
-    deck_path = f"{dir}/{fn}"
-            
+        directory_path = Path(".")
+    
+    # Ensure directory exists
+    directory_path.mkdir(parents=True, exist_ok=True)
+    
+    # Create full path
+    deck_path = directory_path / filename
+    
     create_anki_deck(deck_name, deck_data, deck_path)
