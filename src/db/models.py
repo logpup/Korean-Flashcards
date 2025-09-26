@@ -3,14 +3,40 @@ from typing import List, Dict, Any, Optional
 import datetime
 
 @dataclass
-class ScrapedPage:
+class KrdictAPIData:
     """
-    A data class to represent scraped data from a webpage
+    A data class to represent data from a Korean Basic Dictionary API call
     """
 
     # Core data information, required for every entry
     source_url: str
-    source_name: str # e.g., "Naver Dictionary", "Korena API"
+    source_name: str # e.g., "Korean Basic Dictionary"
+    param_part: str # e.g., "word", "ip", "dfn", "exam"
+    param_trans_lang: Optional[str]
+
+    # Data from the API call
+    page_data: Dict = field(default_factory=dict)
+
+    # Timestamps for tracking when the data was added or last updated
+    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+
+    def __post_init__(self):
+        """
+        Sets the 'updated_at' timestamp to match 'created_at' upon initialization.
+        This ensures both timestamps are identical when a new entry is created.
+        """
+        self.updated_at = self.created_at   
+
+@dataclass
+class NaverDictionaryPage:
+    """
+    A data class to represent scraped data from a Naver Dictionary Page
+    """
+
+    # Core data information, required for every entry
+    source_url: str
+    source_name: str # e.g., "Naver Dictionary"
     source_region: str
     source_page: str
 

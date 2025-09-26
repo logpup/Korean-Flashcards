@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 # Internal library methods imports
 from scraping.scraping_dynamic import render_dynamic_page
-from db.models import ScrapedPage
+from db.models import NaverDictionaryPage
 
 # Initialize a semaphore to limit concurrent requests
 # Adjust the value (e.g., 5) to control the number of simultaneous tasks.
@@ -269,7 +269,7 @@ async def scrape_naver_dict(korean_word):
     en_word_idiom_soup = await scrape_page(korean_word, "en", "word")
     if en_word_idiom_soup:
         en_word_idiom_page_data = parse_english_word_idiom(en_word_idiom_soup)
-        page_data.append(ScrapedPage(
+        page_data.append(NaverDictionaryPage(
             source_name = "Naver Dictionary",
             source_url = "naver.dict.com",
             source_region = "en",
