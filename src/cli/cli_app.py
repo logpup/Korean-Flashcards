@@ -76,7 +76,8 @@ async def _generate_flashcards_async(
                 # Process each new word (source references, append values, set attributes)
                 word_data = await lookup_entry(new_word) # Search through sources
                 for data in word_data:
-                    append_value(collection, new_word, "word_data", data)
+                    if data:
+                        append_value(collection, new_word, "word_data", data)
                 set_word_attributes(collection, new_word)
                 
                 # Create flashcard and append to deck

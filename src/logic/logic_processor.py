@@ -6,7 +6,6 @@ from typing import List, Dict, Any, Optional
 from pymongo.collection import Collection
 
 # Internal library methods imports
-from db.connection import connect_server, retrieve_collection
 from db.crud import get_value, set_value
 
 def most_recent_value(word_data: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -225,37 +224,3 @@ def query_anki_flashcard_data(collection: Collection, korean_word: str):
 
     # print(f"Flashcard: {flashcard_data}")
     return flashcard_data
-
-# Connect to server and initialize the korean_words collection
-client = connect_server()
-collection = retrieve_collection(client)
-korean_word = "가을"
-
-query_anki_flashcard_data(collection, korean_word)
-
-
-"""
-1. look up the word
-2. send data over to be stored in the database
-3. query from results
-4. populate word attributes
-5. use word_attributes to make flashcards
-6. send flaschards made this sessions to database
-7. export flashcard file
-"""
-
-"""
-korean_word
-
-hanja_1
-english_idioms_1
-
-hanja_2
-english_idioms_2
-
-example_sentence_1
-example_translation_1
-
-example_sentence_2
-example_translation_2
-"""

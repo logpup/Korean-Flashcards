@@ -274,13 +274,14 @@ async def scrape_naver_dict(korean_word):
             source_url = "naver.dict.com",
             source_region = "en",
             source_page = "word_idiom",
-            page_data = en_word_idiom_page_data))
+            page_data = en_word_idiom_page_data
+        ))
     
     # Scrape Naver's Korean-English Dictionary's "Examples" page
     en_example_soup = await scrape_page(korean_word, "en", "example")
     if en_example_soup:
         en_example_page_data = parse_english_examples(en_example_soup)
-        page_data.append(ScrapedPage(
+        page_data.append(NaverDictionaryPage(
             source_name = "Naver Dictionary",
             source_url = "naver.dict.com",
             source_region = "en",

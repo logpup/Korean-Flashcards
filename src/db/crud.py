@@ -7,7 +7,7 @@ from typing import Dict, Any
 from pymongo.collection import Collection
 
 # Internal library methods imports
-from db.models import ScrapedPage, KoreanWord
+from db.models import KoreanWord
 
 def document_exists(db_collection: Collection, word: str) -> bool:
     """

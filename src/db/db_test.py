@@ -6,6 +6,7 @@ from db.connection import connect_server, retrieve_collection
 from db.crud import create_document, document_exists, append_value
 from db.models import KoreanWord
 from scraping.scraping_naver_dict import scrape_naver_dict
+from api.krdict.api_krdict import retrieve_krdict_data
 
 
 # Connect to server and initialize the korean_words collection
@@ -26,7 +27,7 @@ if collection is not None:
             create_document(collection, word_obj)
 
         # Append data if entry exists     
-        word_data = asyncio.run(scrape_naver_dict(korean_word))
+        word_data = asyncio.run(retrieve_krdict_data(korean_word, "english"))
         for data in word_data:
             append_value(collection, korean_word, "word_data", data)
             
