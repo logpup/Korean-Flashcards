@@ -4,7 +4,7 @@ import asyncio
 from lxml import etree
 import json
 import pprint
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from db.models import KrdictAPIData
 
 # The base URL for the Korean Basic Dictionary API search endpoint.
@@ -26,8 +26,19 @@ def get_api_key():
         raise ValueError("Please set the 'KRDICT_KEY' environment variable with your API key.")
     return api_key
 
-async def retrieve_api_data(api_key: str, word: str, part: str, trans_lang: Optional[str]):
+async def retrieve_api_data(api_key: str, word: str, part: str, trans_lang: Optional[str]) -> str | None:
+    """
+        Asynchronously searches for a Korean word using the official API endpoint.
 
+        Args:
+            api_key: The API key for the Korean Basic Dictionary.
+            word: The Korean word to search for.
+            part:The search part (e.g., 'word', 'exam').
+            trans_lang (optional): The target translation language (e.g., 'english', 'japanese').
+        
+        Returns:
+            response: The raw XML dictionary entry data.
+    """
     # Initialize dictionary to hold parameters for the API Call
     parameters = {
         "key": api_key,
@@ -69,33 +80,43 @@ async def retrieve_api_data(api_key: str, word: str, part: str, trans_lang: Opti
         }
         parameters.update(translation_params) 
 
+    # Initialize response (or the return value) outside the try block
+    response = None 
+
     try:        
         # httpx.AsyncClient is the asynchronous equivalent of requests
         async with httpx.AsyncClient() as client:
-            response = await client.get(
+            response_tag = await client.get(
                 API_URL,
                 params=parameters,
                 follow_redirects=True
             )
             # Raise an exception for bad status codes (4xx or 5xx)
-            response.raise_for_status()
+            response_tag.raise_for_status()
             
             # The API returns XML, so we return the raw text to be parsed later.
-            return response.text
+            response = response_tag.text
+            return response
     except ValueError as e:
         print(f"API Key Error: {e}")
-        return None
+        return response
     except httpx.HTTPStatusError as e:
         print(f"HTTP Error: {e.response.status_code} - {e.response.text}")
-        return None
+        return response
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        return None
+        return response
 
-def _xml_to_dict_recursive(element):
+def _xml_to_dict_recursive(element) -> Dict | str:
     """
-    A helper function to recursively convert an XML Element to a Python dictionary.
-    Fixed version to handle recursion issues properly.
+        A helper function to recursively convert an XML Element to a Python dictionary.
+        Fixed version to handle recursion issues properly.
+
+        Args:
+            element (lxml,etree.Element): The current XML element to process.
+        
+        Returns:
+            d: A dictionary or string representing the element's content.
     """
     # Get all child elements
     children = list(element)
@@ -126,7 +147,7 @@ def _xml_to_dict_recursive(element):
     
     return d
 
-def parse_xml_to_dict(xml_data):
+def parse_xml_to_dict(xml_data: str) -> Dict:
     """
     Parses the XML data into a complete Python dictionary.
     
@@ -150,7 +171,17 @@ def parse_xml_to_dict(xml_data):
         print(f"An error occurred during data processing: {e}")
         return {}
 
-def parse_word_raw_data(word_raw_data: Dict):
+def parse_word_raw_data(word_raw_data: Dict) -> Optional[List[Dict[str, Any]]]:
+    """
+        Parses the raw dictionary data (parsed from XML) for the 'word' search part.
+        It extracts key information like word, origin, part of speech, definitions, and translations.
+
+        Args:
+            word_raw_data: A dictionary containing the raw parsed XML data.
+        
+        Returns:
+            word_data: A list of dictionaries, where each dictionary represents a distinct word entry.
+    """
     # 1. Get the content of the single root tag (i.e. "channel")
     root_content = list(word_raw_data.values())[0]
     
@@ -260,7 +291,17 @@ def parse_word_raw_data(word_raw_data: Dict):
         print("\n'item' key not found in the response, check if search returned any results.")
         return None
 
-def parse_exam_raw_data(exam_raw_data: Dict):
+def parse_exam_raw_data(exam_raw_data: Dict) -> Optional[List[Dict[str, Any]]]:
+    """
+        Parses the raw example data (parsed from XML) for the 'exam' search part.
+        It extracts the example sentence, the associated word, and a link to the word's page.
+
+        Args:
+            exam_raw_data: A dictionary containing the raw parsed XML data.
+
+        Returns:
+            exam_data: A list of dictionaries, where each dictionary represents a distinct example entry.
+    """
     # 1. Get the content of the single root tag (i.e. "channel")
     root_content = list(exam_raw_data.values())[0]
     
@@ -284,17 +325,18 @@ def parse_exam_raw_data(exam_raw_data: Dict):
             # word (p.s. this word may differ from one searched for in the initial API call)
             if "word" in item_tag:
                 word_tag = item_tag["word"]
-                word_text = word_tag["text"] if isinstance(word_tag, str) else word_tag.get("text", "")
+                # If it's a string, use the string itself; otherwise, try to get the 'text' key.
+                word_text = word_tag if isinstance(word_tag, str) else word_tag.get("text", "")
                 item_data["word"] = word_text
             # example
             if "example" in item_tag:
                 example_tag = item_tag["example"]
-                example_text = example_tag["text"] if isinstance(example_tag, str) else example_tag.get("text", "")
+                example_text = example_tag if isinstance(example_tag, str) else example_tag.get("text", "")
                 item_data["example"] = example_text
             # link (i.e url to Korean Basic Dictionary page for associate word in the sentence)
             if "link" in item_tag:
                 link_tag = item_tag["link"]
-                link_text = link_tag["text"] if isinstance(link_tag, str) else link_tag.get("text", "")
+                link_text = link_tag if isinstance(link_tag, str) else link_tag.get("text", "")
                 item_data["link"] = link_text
             exam_data.append(item_data) # Append to exam_data list
         return exam_data
@@ -303,7 +345,7 @@ def parse_exam_raw_data(exam_raw_data: Dict):
         print("\n'item' key not found in the response, check if search returned any results.")
         return None
 
-async def retrieve_krdict_data(korean_word: str, language: Optional[str]):
+async def retrieve_krdict_data(korean_word: str, language: Optional[str]) -> Optional[List[Dict[str, Any]]]:
     '''
         Searches Naver Dictionary pages for specified Korean word and returns data scraped from pages
         as a list of dictionary data.
@@ -312,7 +354,7 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]):
             korean_word: Korean word intended to search for
 
         Returns:
-            word_data: A list of dictionaries that contain data retrieved from each Korean Basic Dictionary search.
+            krdict_data: A list of dictionaries that contain data retrieved from each Korean Basic Dictionary search.
     '''
     api_key = get_api_key() # Retrieve API Key
 
@@ -320,15 +362,15 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]):
     krdict_word_xml_data = await retrieve_api_data(api_key, korean_word, "word", language)
     krdict_exam_xml_data = await retrieve_api_data(api_key, korean_word, "exam", language)
 
-    word_data = []
+    krdict_data = []
 
     # Parse XML Data and return as a Python Dictionary
     if krdict_word_xml_data:
         krdict_word_raw_data = parse_xml_to_dict(krdict_word_xml_data)
         krdict_word_page_data = parse_word_raw_data(krdict_word_raw_data)
 
-        # Append to return list "word_data"
-        word_data.append(KrdictAPIData(
+        # Append to return list "krdict_data"
+        krdict_data.append(KrdictAPIData(
             source_url = "https://krdict.korean.go.kr",
             source_name = "Korean Basic Dictionary",
             param_part = "word",
@@ -341,8 +383,8 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]):
         krdict_exam_raw_data = parse_xml_to_dict(krdict_exam_xml_data)
         krdict_exam_page_data = parse_exam_raw_data(krdict_exam_raw_data)
         
-        # Append to return list "word_data"
-        word_data.append(KrdictAPIData(
+        # Append to return list "krdict_data"
+        krdict_data.append(KrdictAPIData(
             source_url = "https://krdict.korean.go.kr",
             source_name = "Korean Basic Dictionary",
             param_part = "exam",
@@ -350,7 +392,7 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]):
             page_data = krdict_exam_page_data
         ))
 
-    return word_data
+    return krdict_data
 
 async def main():
     """
@@ -362,10 +404,10 @@ async def main():
     api_key = get_api_key()
     xml_data = await retrieve_api_data(api_key, search_word, "exam", "english")
     
-    word_raw_data = parse_xml_to_dict(xml_data)
-    word_page_data = parse_word_raw_data(word_raw_data)
+    exam_raw_data = parse_xml_to_dict(xml_data)
+    exam_page_data = parse_exam_raw_data(exam_raw_data)
 
-    pprint.pprint(word_page_data)
+    pprint.pprint(exam_page_data)
 
     # if xml_data:
     #     word_data = parse_xml_to_dict(xml_data)

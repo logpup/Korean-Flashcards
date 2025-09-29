@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Any
 from api.krdict.api_krdict import retrieve_krdict_data
 from scraping.scraping_naver_dict import scrape_naver_dict
 
-async def lookup_entry(korean_word: str, language: Optional[str]) -> Optional[List[Dict[str, Any]]]:
+async def lookup_entry(korean_word: str, language: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
     """
     Searches Naver for a Korean word or phrase's Hanja, English definition, and
     an example sentence
@@ -26,13 +26,12 @@ async def lookup_entry(korean_word: str, language: Optional[str]) -> Optional[Li
 
     # Aggregate data from sources
     krdict_document = await retrieve_krdict_data(korean_word, language)
-    
     naver_dict_document = await scrape_naver_dict(korean_word)
 
-
-    document.append(
-        krdict_document,
-        naver_dict_document
-    )
+    # Apend to list "document"
+    if krdict_document:
+        document += krdict_document
+    if naver_dict_document:
+        document += naver_dict_document
     
     return document

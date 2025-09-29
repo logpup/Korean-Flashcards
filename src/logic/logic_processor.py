@@ -150,38 +150,81 @@ def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     # Retrieve word data from the document for the specified word
     word_data = get_value(collection, korean_word, "word_data")
 
-    # Isolate scraped data from Naver's Korean-English Dictionary "Word Idiom" page
-    naver_en_word_data = [
+    # Isolate data from Korean Basic Dictionary API calls
+    krdict_word_data_list = [
         data for data in word_data
-        if data.get("source_name") == "Naver Dictionary"
-        and data.get("source_url") == "naver.dict.com"
-        and data.get("source_region") == "en"
-        and data.get("source_page") == "word_idiom"
+        if data.get("source_name") == "Korean Basic Dictionary"
+        and data.get("source_url") == "https://krdict.korean.go.kr"
+        and data.get("param_part") == "word"
     ]
     # Target the most recent entry
-    page_data = most_recent_value(naver_en_word_data).get("page_data", [])
+    if krdict_word_data_list is not None:
+        krdict_page_data = most_recent_value(krdict_word_data_list).get("page_data", [])
 
-    # Initalize variable to store pairs
-    pairs = []
+        # Initialize variable to store pairs
+        pairs = []
 
-    # Take entries where only the korean_word key matches the passed korean_word value
-    matched_words = [entry for entry in page_data if entry.get("korean_word") == korean_word]
+        # Take entries where only the korean_word key matches the passed word value
+        matched_words = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
 
-    # Append each hanja-idioms pair to the list of pairs
-    for matched_word in matched_words:
-        # Retrieve hanja value
-        hanja = matched_word.get("hanja")
-        # Initialize variable to store each sense
-        senses = []
-        senses = matched_word.get("senses")
-        # Initalize dictionary data to store hanja and its senses
-        pair = {
-            "hanja": hanja,
-            "senses": senses
-        }
-        pairs.append(pair)
-    
-    return pairs
+        # Append each hanja-idioms pair to the list of pairs
+        for matched_word in matched_words:
+            # Check if english idiom provided
+            if "en_word" in matched_word:
+                # Retrieve origin value
+                origin = matched_word.get("origin")
+                # Retrieve pos value
+                pos = matched_word.get("pos")
+                # Retrieve en_word value
+                en_word = matched_word.get("en_word")
+                # Add part of speech to idiom string
+                idiom = f"[{pos}] {en_word}"
+                # Initialize variable senses
+                senses = []
+                senses.append(idiom)
+                # Initalize dictionary data to store hanja and its senses
+                pair = {
+                    "hanja": origin,
+                    "senses": senses
+                }
+                pairs.append(pair)
+
+        return pairs
+    else:
+
+        # Isolate scraped data from Naver's Korean-English Dictionary "Word Idiom" page
+        naver_dict_en_word_data_list = [
+            data for data in word_data
+            if data.get("source_name") == "Naver Dictionary"
+            and data.get("source_url") == "naver.dict.com"
+            and data.get("source_region") == "en"
+            and data.get("source_page") == "word_idiom"
+        ]
+        # Target the most recent entry
+        if naver_dict_en_word_data_list is not None:
+            naver_dict_page_data = most_recent_value(naver_dict_en_word_data_list).get("page_data", [])
+
+            # Initalize variable to store pairs
+            pairs = []
+
+            # Take entries where only the korean_word key matches the passed korean_word value
+            matched_words = [entry for entry in naver_dict_page_data if entry.get("korean_word") == korean_word]
+
+            # Append each hanja-idioms pair to the list of pairs
+            for matched_word in matched_words:
+                # Retrieve hanja value
+                hanja = matched_word.get("hanja")
+                # Initialize variable to store each sense
+                senses = []
+                senses = matched_word.get("senses")
+                # Initalize dictionary data to store hanja and its senses
+                pair = {
+                    "hanja": hanja,
+                    "senses": senses
+                }
+                pairs.append(pair)
+
+            return pairs
 
 def query_anki_flashcard_data(collection: Collection, korean_word: str):
     """
