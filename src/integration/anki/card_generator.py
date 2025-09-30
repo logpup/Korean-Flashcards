@@ -10,7 +10,7 @@ from pathlib import Path
 import pprint
 import genanki
 
-def to_superscript_digit(n):
+def _to_superscript_digit(n):
     """Converts a number to its superscript string representation."""
     superscript_str = ''
     for char in str(n):
@@ -59,7 +59,7 @@ def create_anki_card(word_data: Dict) -> genanki.Note:
                 senses_list = []
                 if len(senses) > 1:
                     for idx, sense in enumerate(senses, start=1):
-                        idx_sup = to_superscript_digit(idx)
+                        idx_sup = _to_superscript_digit(idx)
                         senses_list.append(f"<span class='senses'>{idx_sup} {sense}</span>")
                 else:
                     senses_list.append(f"<span class='senses'>{senses[0]}</span>")
@@ -73,7 +73,7 @@ def create_anki_card(word_data: Dict) -> genanki.Note:
         for idx, example in enumerate(example_sentences.values(), start=1):
             english_sentence = example.get('english_sentence')
             korean_sentence = example.get('korean_sentence')
-            idx_sup = to_superscript_digit(idx)
+            idx_sup = _to_superscript_digit(idx)
             examples_list.append(f"<span class='english_sentence'>{idx_sup} {english_sentence}</span><br><span class='korean_sentence'>{korean_sentence}</span><br><br>")
         example_sentences_string = "<br>".join(examples_list)
 

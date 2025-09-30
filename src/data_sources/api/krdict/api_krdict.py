@@ -73,6 +73,7 @@ async def retrieve_api_data(api_key: str, word: str, part: str, trans_lang: Opti
     # Set translation codes if value provided, if not refrain from appending translation parameters to the API call
     translated = ""
     trans_lang_code = ""
+    
     if trans_lang:
         translation_params = {
             "translated": "y",

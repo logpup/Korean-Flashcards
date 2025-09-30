@@ -2,23 +2,20 @@
 from pathlib import Path
 import asyncio
 import concurrent.futures
+from typing import Optional
 from typing_extensions import Annotated
 
 # Third-party external library imports
 import typer
 from rich.console import Console
-from InquirerPy import inquirer
 from pymongo.errors import OperationFailure
 
 # Internal library methods imports
-from data_utils.data_loader import import_candidate_file
 from db.connection import connect_server, retrieve_collection
-from db.crud import document_exists, create_document, append_value
-from logic.logic_lookup import lookup_entry
-from logic.logic_processor import set_word_attributes, query_anki_flashcard_data
-from db.models import KoreanWord
-from anki.card_generator import create_anki_card, export_anki_file
-from cli.cli_inquirer import ask_to_aggregate_data
+from db.crud import document_exists
+from cli.cli_inquirer import ask_to_aggregate_data, select_words
+from logic.logic_processor import process_word, stage_flashcard, initialize_word_document
+from logic.logic_file_io import import_candidate_file, export_flashcard_deck
 
 # Create a Typer app instance
 app = typer.Typer(
@@ -33,7 +30,8 @@ async def _generate_flashcards_async(
     input_file: Path,
     directory: Path,
     filename: str,
-    card_type: str,
+    language: Optional[str] = None,
+    card_type: Optional[str] = None,
 ):
     """
     Async implementation of flashcard generation
@@ -41,15 +39,16 @@ async def _generate_flashcards_async(
     console.print(f"\n[bold green]Processing input file:[/] {input_file}")
     console.print(f"[bold cyan]Output directory:[/] {directory}")
     console.print(f"[bold cyan]Filename:[/] {filename}")
-    
-    # Save Korean words from an input file to a list
-    word_list = import_candidate_file(input_file)
+
     # Connect to the MongoDB server and retrieve specified collection
     client = connect_server()
     collection = retrieve_collection(client)
+
+    # Save Korean words from an input file to a list
+    word_list = import_candidate_file(input_file)
+
     # Seperate words already in the server from new words to scrape
     console.print("[bold blue]Checking to see which words are already in stored in the database...[/]")
-    
     if collection is not None:
         try:
             # Seperate from new words, words that are already in the database
@@ -68,43 +67,26 @@ async def _generate_flashcards_async(
             
             for new_word in new_words_list:
                 # Create a new MongoDB document for each new word
-                word_obj = KoreanWord(
-                    word=new_word,
-                )
-                create_document(collection, word_obj)
-                
+                initialize_word_document(collection, new_word)
                 # Process each new word (source references, append values, set attributes)
-                word_data = await lookup_entry(new_word) # Search through sources
-                for data in word_data:
-                    if data:
-                        append_value(collection, new_word, "word_data", data)
-                set_word_attributes(collection, new_word)
-                
+                await process_word(collection, new_word, language)
                 # Create flashcard and append to deck
-                flashcard_data = query_anki_flashcard_data(collection, new_word)
-                note = create_anki_card(flashcard_data)
-                deck_data.append(note)
+                flashcard_note = stage_flashcard(collection, new_word, card_type)
+
+                deck_data.append(flashcard_note)
 
             try:
-                selected_words_list = await inquirer.checkbox(
-                    message="These words are already in the database. Select which entries you would still want to include for this deck.\n[Space] to Select\n[Enter] to Confirm Entry",
-                    choices=existing_words,
-                ).execute_async()
-
+                selected_words_list = await select_words(existing_words)
                 should_aggregate_data = await ask_to_aggregate_data()
 
-                if selected_words_list:
+                if selected_words_list: 
                     for selected_word in selected_words_list:
                         if should_aggregate_data:
-                        # Process each selected word (source references, append values, set attributes)
-                            word_data = await lookup_entry(selected_word) # Search through sources
-                            for data in word_data:
-                                append_value(collection, selected_word, "word_data", data)
-                            set_word_attributes(collection, selected_word) # Set word attributes in database
-                        # Create flashcard and append to deck
-                        flashcard_data = query_anki_flashcard_data(collection, selected_word)
-                        note = create_anki_card(flashcard_data)
-                        deck_data.append(note)
+                            # Process each selected word (source references, append values, set attributes)
+                            await process_word(collection, selected_word, language)
+                            # Create flashcard and append to deck
+                            flashcard_note = stage_flashcard(collection, selected_word, card_type)
+                            deck_data.append(flashcard_note)
 
             except KeyboardInterrupt:
                 print("\n\nOperation cancelled by user. Exiting...")
@@ -116,12 +98,7 @@ async def _generate_flashcards_async(
             console.print(f"[bold magenta]Directory type:[/] {type(directory)}")
             console.print(f"[bold magenta]Directory exists:[/] {directory.exists()}")
             
-            # Create directory if it doesn't exist
-            if not directory.exists():
-                directory.mkdir(parents=True, exist_ok=True)
-                console.print(f"[bold green]Created directory:[/] {directory}")
-            
-            export_anki_file(deck_data, filename, directory)
+            export_flashcard_deck(deck_data, console, filename, directory, card_type)
 
         except OperationFailure as e:
             print(f"ERROR: Operation failed. {e}")

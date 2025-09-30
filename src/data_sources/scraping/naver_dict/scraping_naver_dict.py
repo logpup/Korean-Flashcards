@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import quote
 
 # Internal library methods imports
-from scraping.scraping_dynamic import render_dynamic_page
+from data_sources.scraping.scraping_utils.scraping_dynamic import render_dynamic_page
 from db.models import NaverDictionaryPage
 
 # Initialize a semaphore to limit concurrent requests
