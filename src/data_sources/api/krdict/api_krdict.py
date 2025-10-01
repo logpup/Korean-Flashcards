@@ -395,43 +395,6 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]) -> Opt
 
     return krdict_data
 
-async def main():
-    """
-    The main asynchronous function to run the word search.
-    """
-    search_word = "완공"
-    print(f"Searching for the word: '{search_word}'...")
-    
-    api_key = get_api_key()
-    xml_data = await retrieve_api_data(api_key, search_word, "exam", "english")
-    
-    exam_raw_data = parse_xml_to_dict(xml_data)
-    exam_page_data = parse_exam_raw_data(exam_raw_data)
-
-    pprint.pprint(exam_page_data)
-
-    # if xml_data:
-    #     word_data = parse_xml_to_dict(xml_data)
-    #     json_table = json.dumps(word_data, indent=4, ensure_ascii=False)
-    #     print(json_table)
-    #     
-    #     # 1. Get the content of the single root tag (i.e. "channel")
-    #     root_content = list(word_data.values())[0]
-    #     
-    #     word_items = []
-    #     # 2. Check if the 'item' key exists inside the root content
-    #     if "item" in root_content:
-    #         word_item_tag = root_content["item"]
-    #         word_items = list(word_item_tag)
-    #     else:
-    #         print("\n'item' key not found in the response, check if search returned any results.")
-# 
-    #     pprint.pprint(word_items)
-    #     
-    # else:
-    #     print("\nCould not parse XML data.")
-
-if __name__ == "__main__":
     # Example usage
     # This runs the main async function.
     asyncio.run(main())

@@ -1,13 +1,13 @@
 # Python standard library imports
-import pprint
 from typing import List, Dict, Any, Optional
+from dataclasses import asdict
 
 # Third-part library imports
 from pymongo.collection import Collection
 
 # Internal library methods imports
 from db.models import KoreanWord
-from db.crud import get_value, set_value, append_value, create_document
+from db.crud import get_value, set_value, append_value, create_document, document_exists
 from logic.logic_lookup import lookup_entry
 from integration.anki.card_generator import create_anki_card
 
@@ -37,10 +37,14 @@ def _most_recent_value(word_data: List[Dict[str, Any]]) -> Optional[Dict[str, An
         print("Error: One or more entries are missing the 'updated_at' key.")
         return None
 
-def retrieve_en_definition(collection: Collection, korean_word: str):
+def retrieve_en_definitions(collection: Collection, korean_word: str):
     
     # Retrieve word data from the document for the specified word
     word_data = get_value(collection, korean_word, "word_data")
+
+    # Check if word_data is None before attempting to iterate
+    if word_data is None:
+        return []
 
     # Isolate scraped data from Naver's Korean-English Dictionary "Word Idiom" page
     naver_en_word_data = [
@@ -51,7 +55,11 @@ def retrieve_en_definition(collection: Collection, korean_word: str):
         and data.get("source_page") == "word_idiom"
     ]
     # Target the most recent entry
-    page_data = _most_recent_value(naver_en_word_data).get("page_data", [])
+    most_recent_entry = _most_recent_value(naver_en_word_data)
+    if most_recent_entry is None:
+        return []
+    
+    page_data = most_recent_entry.get("page_data", [])
 
     # Initalize variable to store definitions
     definitions = []
@@ -72,6 +80,10 @@ def retrieve_en_examples(collection: Collection, korean_word: str):
     # Retrieve word data from the document for the specified word
     word_data = get_value(collection, korean_word, "word_data")
 
+    # Check if word_data is None before attempting to iterate
+    if word_data is None:
+        return []
+    
     # Isolate scraped data from Naver's Korean-English Dictionary "Example" page
     naver_en_example_data = [
         data for data in word_data
@@ -80,8 +92,12 @@ def retrieve_en_examples(collection: Collection, korean_word: str):
         and data.get("source_region") == "en"
         and data.get("source_page") == "example"
     ]
+
     # Target the most recent entry
-    page_data = _most_recent_value(naver_en_example_data).get("page_data", [])
+    most_recent_entry = _most_recent_value(naver_en_example_data)
+    if most_recent_entry is None:
+        return []
+    page_data = most_recent_entry.get("page_data", [])
     
     # Initalize variable to store definitions
     examples = []
@@ -102,9 +118,14 @@ def retrieve_en_examples(collection: Collection, korean_word: str):
 
     return examples
 
-def retrieve_hanja(collection: Collection, korean_word: str):
+def retrieve_hanjas(collection: Collection, korean_word: str):
     # Retrieve word data from the document for the specified word
     word_data = get_value(collection, korean_word, "word_data")
+
+    # Check if word_data is None before attempting to iterate
+    if word_data is None:
+        print(f"No word_data found for '{korean_word}'. Cannot retrieve hanja.")
+        return []
 
     # Isolate scraped data from Naver's Korean-English Dictionary "Word Idiom" page
     naver_en_word_data = [
@@ -114,8 +135,12 @@ def retrieve_hanja(collection: Collection, korean_word: str):
         and data.get("source_region") == "en"
         and data.get("source_page") == "word_idiom"
     ]
+
     # Target the most recent entry
-    page_data = _most_recent_value(naver_en_word_data).get("page_data", [])
+    most_recent_entry = _most_recent_value(naver_en_word_data)
+    if most_recent_entry is None:
+        return []
+    page_data = most_recent_entry.get("page_data", [])
 
     # Initalize variable to store definitions
     hanjas = []
@@ -133,17 +158,20 @@ def retrieve_hanja(collection: Collection, korean_word: str):
     return hanjas
 
 def set_word_attributes(collection: Collection, korean_word: str):
-    hanja = retrieve_hanja(collection, korean_word)
-    en_definition = retrieve_en_definition(collection, korean_word)
+    hanja = retrieve_hanjas(collection, korean_word)
+    en_definition = retrieve_en_definitions(collection, korean_word)
     en_example_sentence = retrieve_en_examples(collection, korean_word)
 
-    set_value(collection, korean_word, "hanja", hanja)
-    set_value(collection, korean_word, "en_definition", en_definition)
-    set_value(collection, korean_word, "en_example_sentence", en_example_sentence)
+    if hanja is not None:
+        set_value(collection, korean_word, "hanja", hanja)
+    if en_definition is not None:
+        set_value(collection, korean_word, "en_definition", en_definition)
+    if en_example_sentence is not None:
+        set_value(collection, korean_word, "en_example_sentence", en_example_sentence)
 
 def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
     # Isolate data from Korean Basic Dictionary API calls
-    krdict_word_data_list = [
+    krdict_word_data = [
         data for data in word_data
         if data.get("source_name") == "Korean Basic Dictionary"
         and data.get("source_url") == "https://krdict.korean.go.kr"
@@ -153,9 +181,12 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
     krdict_hanja_idiom_pairs = []
 
     # Target the most recent entry
-    if krdict_word_data_list is not None:
+    if krdict_word_data:
         # Retrieve the most recent Korean Basic Dictionary entry
-        krdict_page_data = _most_recent_value(krdict_word_data_list).get("page_data", [])
+        most_recent_entry = _most_recent_value(krdict_word_data)
+        if most_recent_entry is None:
+            return []
+        krdict_page_data = most_recent_entry.get("page_data", [])
         # Isolate word items that match the korean_word string
         krdict_word_items = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
 
@@ -188,7 +219,7 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
 
 def retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word: str):
     # Isolate scraped data from Naver's Korean-English Dictionary "Word Idiom" page
-    naver_dict_en_word_data_list = [
+    naver_dict_en_word_data = [
         data for data in word_data
         if data.get("source_name") == "Naver Dictionary"
         and data.get("source_url") == "naver.dict.com"
@@ -199,9 +230,12 @@ def retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word: str):
     # Initalize variable to store pairs
     naver_dict_hanja_idiom_pairs = []
     
-    if naver_dict_en_word_data_list is not None:
+    if naver_dict_en_word_data:
         # Target the most recent Naver Dictionary entry
-        naver_dict_page_data = _most_recent_value(naver_dict_en_word_data_list).get("page_data", [])
+        most_recent_entry = _most_recent_value(naver_dict_en_word_data)
+        if most_recent_entry is None:
+            return []
+        naver_dict_page_data = most_recent_entry.get("page_data", [])
         # Take entries where only the korean_word key matches the passed korean_word value
         naver_dict_word_items = [entry for entry in naver_dict_page_data if entry.get("korean_word") == korean_word]
 
@@ -230,6 +264,8 @@ def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     """
     # Retrieve word data from the document for the specified word
     word_data = get_value(collection, korean_word, "word_data")
+    if word_data is None:
+        return[]
 
     # Initialize variable to store pairs
     pairs = []
@@ -296,10 +332,34 @@ def initialize_word_document(collection: Collection, korean_word: str):
     create_document(collection, word_obj)
 
 async def process_word(collection: Collection, korean_word: str, language: Optional[str] = None):
-    word_data = await lookup_entry(korean_word, language)
-    for data in word_data:
-        if data:
+    # Check if document for word exists
+    exists = document_exists(collection, korean_word)
+    # Create a document for the specified word if not
+    if exists is False:
+        initialize_word_document(collection, korean_word)
+
+    # Aggregate data for specified word and save found entries as the list "word_data_objects"
+    word_data_objects = await lookup_entry(korean_word, language)
+    
+    # Initialize a list to store dictionary representations
+    word_data_list = []
+    # Convert each dataclass object to a dictionary for MongoDB compatability
+    for data_object in word_data_objects:
+        if data_object:
+            try:
+                data_dict = asdict(data_object)
+                word_data_list.append(data_dict)
+            except TypeError:
+                # Check if the object is already adictionary
+                if isinstance(data_object, Dict):
+                    data_dict = data_object
+                    word_data_list.append(data_dict)
+
+    # Append each dictionary entry as a value for the key "word_data"
+    if word_data_list:
+        for word_data in word_data_list:
             append_value(collection, korean_word, "word_data", word_data)
+    # Set values of note (e.g. hanja, definitions)
     set_word_attributes(collection, korean_word)
 
 def stage_flashcard(collection: Collection, korean_word: str, card_type: Optional[str]=None):
@@ -310,3 +370,17 @@ def stage_flashcard(collection: Collection, korean_word: str, card_type: Optiona
         flashcard_data = query_anki_flashcard_data(collection, korean_word)
         flashcard_note = create_anki_card(flashcard_data)
         return flashcard_note
+
+# --- Test ---
+from db.connection import connect_server, retrieve_collection
+import asyncio
+import pprint
+
+client = connect_server()
+collection = retrieve_collection(client)
+
+korean_word = "사업"
+asyncio.run(process_word(collection, korean_word))
+flashcard_note = stage_flashcard(collection, korean_word)
+pprint.pprint(flashcard_note)
+

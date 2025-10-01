@@ -13,7 +13,12 @@ def document_exists(db_collection: Collection, word: str) -> bool:
     """
     Returns True if an entry for the given word exists in the collection.
     """
-    return db_collection.find_one({"word": word}) is not None
+    document_exists = db_collection.find_one({"word": word})
+
+    if document_exists:
+        return True
+    elif document_exists is None:
+        return False
 
 def create_document(db_collection: Collection, korean_word: KoreanWord):
     """
@@ -51,8 +56,7 @@ def append_value(db_collection: Collection, word: str, key: str, value):
         db_collection: The MongoDB collection object.
         word: The value of the 'word' field to find the document.
         key: The attribute (field) to which the new entry will be appended.
-        value: The new entry to append to the list. This can be a dictionary
-               or a dataclass instance.
+        value: The new entry to append to the list. This must be a dictionary
     """
      # Check if the value is a dataclass instance and convert it to a dictionary
     # if it is. This is necessary because PyMongo cannot directly serialize
