@@ -17,7 +17,7 @@ from db.models import NaverDictionaryPage
 REQUEST_SEMAPHORE = asyncio.Semaphore(5)
 
 # Method to set the elector for page.await_for_selector
-def set_selector(region: str, url_range: str):
+def _set_selector(region: str, url_range: str):
     """
     Returns the appropriate CSS selector for a given region and URL range.
     Returns None if no matching selector is found.
@@ -87,7 +87,7 @@ async def scrape_page(korean_word: str, region: str, url_range: str):
 
                     # Await dynamic page rendering
                     print(f"url_range: {url_range}")
-                    selector = set_selector(region, url_range) # Set page selector to wait to load for
+                    selector = _set_selector(region, url_range) # Set page selector to wait to load for
 
                     if selector:
                         # Await playwright to render javascript elements
