@@ -34,4 +34,7 @@ async def lookup_entry(korean_word: str, language: Optional[str] = None) -> Opti
     if naver_dict_word_data:
         word_data += naver_dict_word_data
     
-    return word_data
+    if word_data:
+        return word_data
+    else:
+        return []

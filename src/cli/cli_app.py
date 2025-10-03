@@ -13,8 +13,8 @@ from pymongo.errors import OperationFailure
 # Internal library methods imports
 from db.connection import connect_server, retrieve_collection
 from db.crud import document_exists
-from cli.cli_inquirer import ask_to_aggregate_data, select_words
-from logic.logic_processor import process_word, stage_flashcard, initialize_word_document
+from cli.cli_inquirer import ask_to_aggregate_data, select_words, input_user_word_data
+from logic.logic_processor import process_word, stage_flashcard
 from logic.logic_file_io import import_candidate_file, export_flashcard_deck
 
 # Create a Typer app instance
@@ -52,11 +52,11 @@ async def _generate_flashcards_async(
     if collection is not None:
         try:
             # Seperate from new words, words that are already in the database
-            existing_words = []
+            existing_words_list = []
             new_words_list = []
             for word in word_list:
                 if document_exists(collection, word):
-                    existing_words.append(word)
+                    existing_words_list.append(word)
                 else:
                     new_words_list.append(word)
 
@@ -65,18 +65,70 @@ async def _generate_flashcards_async(
             # Initalize list to hold deck of flashcards
             deck_data = []
             
+            # Initialize list to hold words where entries missing
+            empty_value_word_info_list = []
             for new_word in new_words_list:
-                # Create a new MongoDB document for each new word
-                initialize_word_document(collection, new_word)
                 # Process each new word (source references, append values, set attributes)
                 await process_word(collection, new_word, language)
                 # Create flashcard and append to deck
                 flashcard_note = stage_flashcard(collection, new_word, card_type)
-
-                deck_data.append(flashcard_note)
-
+                missing_values_list = []
+                # Prepare words that are missing entries
+                if not flashcard_note.get("entries"):
+                    missing_values_list.append("entries")
+                if not flashcard_note.get("examples"):
+                    missing_values_list.append("examples")
+                if missing_values_list:
+                    empty_value_word_info = {
+                        "korean_word": new_word,
+                        "missing_values": missing_values_list
+                    }
+                    empty_value_word_info_list.append(empty_value_word_info)
+                # If all values entered, append to deck_data
+                else:
+                    if flashcard_note:
+                        deck_data.append(flashcard_note)
+            
+            # Process words that are missing values
             try:
-                selected_words_list = await select_words(existing_words)
+                # Have user select which words to write entries for
+                empty_value_word_list = [value["korean_word"] for value in empty_value_word_info_list]
+                prompt_message = "These words are missing entries. Select which entries you would want to input data for."
+                response = await select_words(empty_value_word_list, prompt_message)
+                selected_words_list = response[0]
+                # Narrow empty_word_info_list to words selected
+                selected_words_set = set(selected_words_list)
+                selected_word_info_list = [
+                    value for value in empty_value_word_info
+                    if value.get("korean_word") in selected_words_set
+                ]
+                # Prompt user to enter data for words selected
+                if selected_words_list:
+                    for selected_word_info in selected_word_info_list:
+                        # Process each selected word
+                        await input_user_word_data(collection, selected_word_info)
+                        # Append to deck_data
+                        selected_word = selected_word_info["korean_word"]
+                        flashcard_note = stage_flashcard(collection, selected_word, card_type)
+                        if flashcard_note:
+                            deck_data.append(flashcard_note)
+                # Append unselected word flaschard to the deck
+                unselected_words_list = response[1]
+                if unselected_words_list:
+                    for unselected_word in unselected_words_list:
+                        flashcard_note = stage_flashcard(collection, unselected_word, card_type)
+                        if flashcard_note:
+                            deck_data.append(flashcard_note)
+
+            except KeyboardInterrupt:
+                print("\n\nOperation cancelled by user. Exiting...")
+            except EOFError:
+                print("\n\nEnd of input received. Exiting...")
+
+            # Process words that are already in the database
+            try:
+                prompt_message = "These words are already in the database. Select which entries you would still want to include for this deck.\n[Space] to Select\n[Enter] to Confirm Entry"
+                selected_words_list = await select_words(existing_words_list, prompt_message)[0]
                 should_aggregate_data = await ask_to_aggregate_data()
 
                 if selected_words_list: 

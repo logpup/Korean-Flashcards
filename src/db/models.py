@@ -3,6 +3,20 @@ from typing import List, Dict, Any, Optional
 import datetime
 
 @dataclass
+class UserEntry:
+    """
+    A data class to represent data from a user entry
+    """
+    source_name: str = "User"
+
+    # Data from the user entry
+    page_data: Dict = field(default_factory=dict)
+
+    # Timestamps for tracking when the data was added or last updated
+    created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+    updated_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+
+@dataclass
 class KrdictAPIData:
     """
     A data class to represent data from a Korean Basic Dictionary API call
@@ -18,8 +32,8 @@ class KrdictAPIData:
     page_data: Dict = field(default_factory=dict)
 
     # Timestamps for tracking when the data was added or last updated
-    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+    updated_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
 
     def __post_init__(self):
         """
@@ -44,8 +58,8 @@ class NaverDictionaryPage:
     page_data: List[Dict] = field(default_factory=list)
 
     # Timestamps for tracking when the data was added or last updated
-    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+    updated_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
 
     def __post_init__(self):
         """
@@ -74,8 +88,8 @@ class KoreanWord:
     word_data: List[Any] = field(default_factory=list)
     
     # Timestamps for tracking when the data was added or last updated
-    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+    updated_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
 
     def __post_init__(self):
         """
