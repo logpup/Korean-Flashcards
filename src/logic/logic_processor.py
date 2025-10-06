@@ -300,6 +300,13 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
         if not most_recent_entry:
             return []
         krdict_page_data = most_recent_entry.get("page_data", [])
+        
+        # Check to prevent iteration over NoneType
+        if krdict_page_data is None:
+            return []
+
+        # Isolate word items that match the korean_word string
+        krdict_word_items = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
 
         # Isolate word items that match the korean_word string
         krdict_word_items = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
@@ -478,7 +485,7 @@ def initialize_word_document(collection: Collection, korean_word: str):
     )
     create_document(collection, word_obj)
 
-async def process_word(collection: Collection, korean_word: str, language: Optional[str] = None):
+async def process_word(collection: Collection, korean_word: str, language: Optional[str] = None) -> bool:
     # Check if document for word exists
     exists = document_exists(collection, korean_word)
 
@@ -488,12 +495,16 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
 
     # Aggregate data for specified word and save found entries as the list "word_data_objects"
     word_data_objects = await lookup_entry(korean_word, language)
+
+    # Track if any data was found
+    data_found = False
     
     # Initialize a list to store dictionary representations
     word_data_list = []
     # Convert each dataclass object to a dictionary for MongoDB compatability
     for data_object in word_data_objects:
         if data_object:
+            data_found = True
             try:
                 data_dict = asdict(data_object)
                 word_data_list.append(data_dict)
@@ -507,9 +518,22 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
     if word_data_list:
         for word_data in word_data_list:
             append_value(collection, korean_word, "word_data", word_data)
+    else:
+        # If no data was added to the list, mark as not found
+        data_found = False
 
     # Set values of note (e.g. hanja, definitions)
     set_word_attributes(collection, korean_word)
+
+    # Double-check by verifying flashcard data exists
+    if data_found:
+        flashcard_data = query_anki_flashcard_data(collection, korean_word)
+        # If no entries and no examples, consider it as no data found
+        if not flashcard_data.get("entries") and not flashcard_data.get("examples"):
+            data_found = False
+
+    # Return whether any data was found
+    return data_found
 
 def process_user_entry(collection: Collection, korean_word: str, user_page_data: Dict):
     # Check if document for word exists
@@ -535,6 +559,7 @@ def stage_flashcard(collection: Collection, korean_word: str, card_type: Optiona
         flashcard_note = create_anki_card(flashcard_data)
         return flashcard_note
 
+"""
 # --- Test ---
 from db.connection import connect_server, retrieve_collection
 import asyncio
@@ -550,4 +575,4 @@ korean_word = "월급 루펑"
 asyncio.run(process_word(collection, korean_word))
 flashcard_note = stage_flashcard(collection, korean_word)
 pprint.pprint(flashcard_note)
-
+"""

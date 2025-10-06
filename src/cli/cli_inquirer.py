@@ -1,10 +1,14 @@
+# Standard Python library imports
 from typing import List, Dict, Tuple
 
+# Third-party external library imports
 from pymongo.collection import Collection
 from InquirerPy import inquirer, prompt
 from InquirerPy.validator import EmptyInputValidator
-from InquirerPy.base.control import Choice
 from InquirerPy.exceptions import InvalidArgument
+
+# Internal Library Imports
+from logic.logic_processor import process_user_entry
 
 async def select_words(word_list: List, prompt_message: str) -> Tuple[List, List]:
     """
@@ -38,13 +42,11 @@ async def ask_to_aggregate_data():
     Ask user if they want to aggregate data again
     """
     try:
-        result = {}
-        result = await inquirer.text(
+        result = await inquirer.confirm(
             message="Would you like to aggregate data once again?",
-            default=False,  # Suggest "no" as the default answer
+            default=False,
         ).execute_async()
         
-        # inquirer.confirm returns a boolean directly, no need to index
         return result
         
     except InvalidArgument as e:
@@ -57,6 +59,9 @@ async def ask_to_aggregate_data():
 async def collect_senses_data() -> List:
     senses = []
     sense_idx = 1
+
+    # Initialize variable to control loop
+    continue_prompt = True
 
     while True:
         # Ask to add another sense
@@ -73,7 +78,7 @@ async def collect_senses_data() -> List:
             message=f"      Sense #{sense_idx} Definition:",
             validate=EmptyInputValidator(),
             filter=lambda x: x.strip()
-        ).execute_async
+        ).execute_async()
 
         # 1.b. Part of Speech (List selection, required)
         pos = await inquirer.select(
@@ -139,7 +144,7 @@ async def collect_en_examples_data() -> List[Dict[str,str]]:
             message=f"\nAdd Example Sentence Pair #{en_example_idx}?"
         ).execute_async()
         
-        if not await continue_example:
+        if not continue_example:
             break
         
         # Prompt 2.a: Korean Sentence (Required)
@@ -160,9 +165,9 @@ async def collect_en_examples_data() -> List[Dict[str,str]]:
             "korean_sentence": korean_sentence,
             "english_sentence": english_sentence
         })
-        example_idx += 1
+        en_example_idx += 1
         
-async def input_user_word_data(collection: Collection, word_info: Dict) -> Dict:
+async def input_user_word_data(collection: Collection, word_info: Dict):
     """
     Prompt user to enter data for a specified word
     1. Have user enter entries (loop through as many wanted)
@@ -172,11 +177,12 @@ async def input_user_word_data(collection: Collection, word_info: Dict) -> Dict:
     2. Have user enter examples (loop through as many wanted)
         a. korean sentence
         b. english sentence
-    3. Return as a dictionary
+    3. Save informtion as a dictionary, and send to database
     """
     korean_word = word_info["korean_word"]
     missing_values = word_info["missing_values"]
 
+    # Initialize variable to hold page data
     page_data = {
         "korean_word": korean_word,
         "hanja_idiom_pairs": [],
@@ -185,17 +191,20 @@ async def input_user_word_data(collection: Collection, word_info: Dict) -> Dict:
 
     # 1. Collect word entries if a missing value
     if "entries" in missing_values:
-        user_hanja_idiom_data = await collect_hanja_idiom_pairs_data()
-        
-        hanja_idiom_pairs = {
-            "korean_word" = korean_word,
-            "hanja" = 
-        }
-        
-    if "examples" in missing_values:
-        word_data["examples"] = await collect_en_examples_data
+        user_hanja_idiom_pairs_data = await collect_hanja_idiom_pairs_data()
 
-    return word_data
+        for entry in user_hanja_idiom_pairs_data:
+            page_data["hanja_idiom_pairs"].append(entry)
+    
+    # 2. Collect English examples if a missing value
+    if "examples" in missing_values:
+        user_en_examples_data = await collect_en_examples_data()
+
+        for en_example in user_en_examples_data:
+            page_data["en_examples"].append(en_example)
+    
+    # 3. Save information to the database
+    process_user_entry(collection, korean_word, page_data)
 
 
     

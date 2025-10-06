@@ -371,29 +371,34 @@ async def retrieve_krdict_data(korean_word: str, language: Optional[str]) -> Opt
         krdict_word_page_data = parse_word_raw_data(krdict_word_raw_data)
 
         # Append to return list "krdict_data"
-        krdict_data.append(KrdictAPIData(
-            source_url = "https://krdict.korean.go.kr",
-            source_name = "Korean Basic Dictionary",
-            param_part = "word",
-            param_trans_lang = language,
-            page_data = krdict_word_page_data
-        ))
+        if krdict_word_page_data:
+            krdict_data.append(KrdictAPIData(
+                source_url = "https://krdict.korean.go.kr",
+                source_name = "Korean Basic Dictionary",
+                param_part = "word",
+                param_trans_lang = language,
+                page_data = krdict_word_page_data
+            ))
 
     # Parse XML Data and return as a Python Dictionary
     if krdict_exam_xml_data:
         krdict_exam_raw_data = parse_xml_to_dict(krdict_exam_xml_data)
         krdict_exam_page_data = parse_exam_raw_data(krdict_exam_raw_data)
-        
-        # Append to return list "krdict_data"
-        krdict_data.append(KrdictAPIData(
-            source_url = "https://krdict.korean.go.kr",
-            source_name = "Korean Basic Dictionary",
-            param_part = "exam",
-            param_trans_lang = language,
-            page_data = krdict_exam_page_data
-        ))
 
-    return krdict_data
+        # Append to return list "krdict_data"
+        if krdict_exam_page_data:
+            krdict_data.append(KrdictAPIData(
+                source_url = "https://krdict.korean.go.kr",
+                source_name = "Korean Basic Dictionary",
+                param_part = "exam",
+                param_trans_lang = language,
+                page_data = krdict_exam_page_data
+            ))
+
+    if krdict_data:
+        return krdict_data
+    else:
+        return []
 
     # Example usage
     # This runs the main async function.
