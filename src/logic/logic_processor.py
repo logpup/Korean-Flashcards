@@ -535,6 +535,37 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
     # Return whether any data was found
     return data_found
 
+def check_missing_values(collection: Collection, korean_word: str, data_found: Optional[bool]=True):
+    # Initialize list to held information on word with empty values
+    empty_values_word_info = {}
+    # If no data found, return that all values are missing
+    if not data_found:
+        missing_values_list = ["entries", "examples"]
+        empty_values_word_info = {
+            "korean_word": korean_word,
+            "missing_values": missing_values_list
+        }
+        return empty_values_word_info
+    elif data_found:
+        # Check flashcard data to check for missing values
+        flashcard_data = query_anki_flashcard_data(collection, korean_word)
+        missing_values_list = []
+        # Prepare words that are missing entries
+        if not flashcard_data.get("entries"):
+            missing_values_list.append("entries")
+        # Prepare words that are missing examples
+        if not flashcard_data.get("examples"):
+            missing_values_list.append("examples")
+        # Return information on missing values
+        if missing_values_list:
+            empty_values_word_info = {
+                "korean_word": korean_word,
+                "missing_values": missing_values_list
+            }
+            return empty_values_word_info
+        else:
+            return {}
+
 def process_user_entry(collection: Collection, korean_word: str, user_page_data: Dict):
     # Check if document for word exists
     exists = document_exists(collection, korean_word)
