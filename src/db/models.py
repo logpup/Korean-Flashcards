@@ -5,16 +5,25 @@ import datetime
 @dataclass
 class UserEntry:
     """
-    A data class to represent data from a user entry
+    A data class to represent manually-entered user data for a Korean word.
     """
+    # Core data information
+    source_url: str = "user_input"
     source_name: str = "User"
-
-    # Data from the user entry
+    
+    # User-entered data
     page_data: Dict = field(default_factory=dict)
-
+    
     # Timestamps for tracking when the data was added or last updated
-    created_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
-    updated_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(tz=datetime.UTC))
+    created_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    updated_at: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    
+    def __post_init__(self):
+        """
+        Sets the 'updated_at' timestamp to match 'created_at' upon initialization.
+        This ensures both timestamps are identical when a new entry is created.
+        """
+        self.updated_at = self.created_at
 
 @dataclass
 class KrdictAPIData:

@@ -166,6 +166,9 @@ async def collect_en_examples_data() -> List[Dict[str,str]]:
             "english_sentence": english_sentence
         })
         en_example_idx += 1
+
+        # Add this return statement:
+        return en_examples
         
 async def input_user_word_data(collection: Collection, word_info: Dict):
     """

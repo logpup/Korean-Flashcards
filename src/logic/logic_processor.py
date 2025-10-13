@@ -535,50 +535,82 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
     # Return whether any data was found
     return data_found
 
-def check_missing_values(collection: Collection, korean_word: str, data_found: Optional[bool]=True):
-    # Initialize list to held information on word with empty values
-    empty_values_word_info = {}
-    # If no data found, return that all values are missing
-    if not data_found:
-        missing_values_list = ["entries", "examples"]
-        empty_values_word_info = {
+def check_missing_values(collection: Collection, korean_word: str, data_found: bool = False) -> Optional[Dict]:
+    """
+    Checks if a word document is missing critical values for flashcard creation.
+    
+    Args:
+        collection: The MongoDB collection
+        korean_word: The Korean word to check
+        data_found: Whether data was found during processing (False means no data found)
+        
+    Returns:
+        A dictionary with korean_word and missing_values if data is missing, None otherwise
+    """
+    # If data_found is False, we know data is missing
+    if data_found is False:
+        return {
             "korean_word": korean_word,
-            "missing_values": missing_values_list
+            "missing_values": ["entries", "examples"]
         }
-        return empty_values_word_info
-    elif data_found:
-        # Check flashcard data to check for missing values
-        flashcard_data = query_anki_flashcard_data(collection, korean_word)
-        missing_values_list = []
-        # Prepare words that are missing entries
-        if not flashcard_data.get("entries"):
-            missing_values_list.append("entries")
-        # Prepare words that are missing examples
-        if not flashcard_data.get("examples"):
-            missing_values_list.append("examples")
-        # Return information on missing values
-        if missing_values_list:
-            empty_values_word_info = {
-                "korean_word": korean_word,
-                "missing_values": missing_values_list
-            }
-            return empty_values_word_info
-        else:
-            return {}
+    
+    # Get the hanja-idiom pairs and examples
+    hanja_idiom_pairs = retrieve_hanja_idioms_pairs(collection, korean_word)
+    en_examples = retrieve_en_examples(collection, korean_word)
+    
+    missing_values = []
+    
+    # Check if entries are missing or empty
+    if not hanja_idiom_pairs or hanja_idiom_pairs == [{"hanja": "", "senses": [""]}]:
+        missing_values.append("entries")
+    
+    # Check if examples are missing or empty
+    if not en_examples:
+        missing_values.append("examples")
+    
+    # Return the info dict if there are missing values
+    if missing_values:
+        return {
+            "korean_word": korean_word,
+            "missing_values": missing_values
+        }
+    
+    return None
 
 def process_user_entry(collection: Collection, korean_word: str, user_page_data: Dict):
-    # Check if document for word exists
-    exists = document_exists(collection, korean_word)
-    # Create a document for the specified word if not
-    if exists is False:
-        initialize_word_document(collection, korean_word)
+    """
+    Processes user-entered data and saves it to the database in the correct format.
     
-    # Initialize UserEntry data class to hold entry data sent
-    word_data = UserEntry(
-        page_data = user_page_data
+    Args:
+        collection: The MongoDB collection
+        korean_word: The Korean word
+        user_page_data: Dictionary containing hanja_idiom_pairs and en_examples
+    """
+    # Initialize dictionary to store hanja-idiom pairs and examples
+    temp_page_data = {
+        "korean_word": korean_word
+    }
+
+    # Process hanja-idiom pairs if provided
+    if user_page_data.get("hanja_idiom_pairs"):
+        hanja_idiom_pairs = user_page_data["hanja_idiom_pairs"]
+        temp_page_data["hanja_idiom_pairs"] = hanja_idiom_pairs
+
+
+    en_examples = []
+    # Process English examples if provided
+    if user_page_data.get("en_examples"):
+        en_examples = user_page_data["en_examples"]
+        temp_page_data["en_examples"] = en_examples
+        # Set the en_example_sentence value
+        set_value(collection, korean_word, "en_example_sentence", en_examples)
+    
+    # Create a UserEntry object with the processed data
+    user_entry = UserEntry(
+        page_data=temp_page_data
     )
-    # Append to database document for the specified word
-    append_value(collection, korean_word, "word_data", word_data)
+    # Save the user entry to the database
+    append_value(collection, korean_word, "word_data", user_entry)
 
 def stage_flashcard(collection: Collection, korean_word: str, card_type: Optional[str]=None):
     # Set default card type if none provided
