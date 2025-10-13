@@ -7,7 +7,6 @@ import unicodedata
 from pathlib import Path
 
 # Third Party Library Imports
-import pprint
 import genanki
 
 def _to_superscript_digit(n):

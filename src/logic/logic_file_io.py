@@ -1,9 +1,11 @@
+# Standard Python Library Imports
 import os
-
-from bs4 import BeautifulSoup
+from pathlib import Path
 from typing import List, Optional
-from rich.console import Console
 
+# External third-party Imports
+from bs4 import BeautifulSoup
+from rich.console import Console
 from integration.anki.card_generator import export_anki_file
 
 def _import_txt(filepath):
@@ -96,7 +98,7 @@ def import_candidate_file(filepath):
         word_list = []  # Initialize empty list to send back if there is an error
         return word_list
     
-def export_flashcard_deck(deck_data: List, console: Console, filename: Optional[str] = None, directory: Optional[str] = None, card_type: Optional[str] = None):
+def export_flashcard_deck(deck_data: List, console: Console, filename: Optional[str] = None, directory: Optional[Path] = None, card_type: Optional[str] = None):
     # Create directory if it doesn't exist
     if not directory.exists():
         directory.mkdir(parents=True, exist_ok=True)

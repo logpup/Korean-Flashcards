@@ -580,16 +580,21 @@ def process_user_entry(collection: Collection, korean_word: str, user_page_data:
     # Append to database document for the specified word
     append_value(collection, korean_word, "word_data", word_data)
 
-
 def stage_flashcard(collection: Collection, korean_word: str, card_type: Optional[str]=None):
+    # Set default card type if none provided
     if card_type is None:
-        flashcard_type = "anki"
-
-    if flashcard_type == "anki":
+        card_type = "anki"
+    
+    # Create flashcard based on type
+    if card_type == "anki":
         flashcard_data = query_anki_flashcard_data(collection, korean_word)
         flashcard_note = create_anki_card(flashcard_data)
         return flashcard_note
-
+    else:
+        print(f"Warning: Unknown card type '{card_type}', defaulting to Anki")
+        flashcard_data = query_anki_flashcard_data(collection, korean_word)
+        flashcard_note = create_anki_card(flashcard_data)
+        return flashcard_note
 """
 # --- Test ---
 from db.connection import connect_server, retrieve_collection

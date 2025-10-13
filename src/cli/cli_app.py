@@ -80,16 +80,16 @@ async def _generate_flashcards_async(
                     flashcard_note = stage_flashcard(collection, new_word, card_type)
                     if flashcard_note:
                         deck_data.append(flashcard_note)
-
+            
             # Process words that are already in the database
             if existing_words_list:
                 try:
                     prompt_message = "These words are already in the database. Select which entries you would still want to include for this deck.\n[Space] to Select\n[Enter] to Confirm Entry"
                     response = await select_words(existing_words_list, prompt_message)
                     selected_words_list = response[0]
-                    should_aggregate_data = await ask_to_aggregate_data()
-
-                    if selected_words_list: 
+                    # Prompt user to aggregate data for words selected
+                    if selected_words_list: # Only proceed if user selected words
+                        should_aggregate_data = await ask_to_aggregate_data()
                         for selected_word in selected_words_list:
                             if should_aggregate_data:
                                 # Process each selected word (source references, append values, set attributes)
@@ -103,7 +103,9 @@ async def _generate_flashcards_async(
                                     if flashcard_note:
                                         deck_data.append(flashcard_note)
                             else:
-                                empty_values_word_info = check_missing_values(collection, selected_word, data_found=True)
+                                # Don't aggregate - just check existing data
+                                # Pass None for data_found to indicate we're checking existing data only
+                                empty_values_word_info = check_missing_values(collection, selected_word, data_found=None)
                                 if empty_values_word_info:
                                     empty_values_word_info_list.append(empty_values_word_info)
                                 else:
