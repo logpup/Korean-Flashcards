@@ -188,23 +188,27 @@ async def input_user_word_data(collection: Collection, word_info: Dict):
     # Initialize variable to hold page data
     page_data = {
         "korean_word": korean_word,
-        "hanja_idiom_pairs": [],
-        "en_examples": [],
     }
 
     # 1. Collect word entries if a missing value
     if "entries" in missing_values:
         user_hanja_idiom_pairs_data = await collect_hanja_idiom_pairs_data()
 
+        hanja_idiom_pairs = []
         for entry in user_hanja_idiom_pairs_data:
             page_data["hanja_idiom_pairs"].append(entry)
+        if hanja_idiom_pairs:
+            page_data["hanja_idiom_pairs"] = hanja_idiom_pairs
     
     # 2. Collect English examples if a missing value
     if "examples" in missing_values:
         user_en_examples_data = await collect_en_examples_data()
-
+        
+        en_examples = []
         for en_example in user_en_examples_data:
-            page_data["en_examples"].append(en_example)
+            en_examples.append(en_example)
+        if en_examples:
+            page_data["en_examples"] = en_examples
     
     # 3. Save information to the database
     process_user_entry(collection, korean_word, page_data)

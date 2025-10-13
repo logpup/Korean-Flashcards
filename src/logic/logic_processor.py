@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pymongo.collection import Collection
 
 # Internal library methods imports
-from db.models import KoreanWord, UserEntry
+from db.models import KoreanWord
 from db.crud import get_value, set_value, append_value, create_document, document_exists
 from logic.logic_lookup import lookup_entry
 from integration.anki.card_generator import create_anki_card
@@ -76,47 +76,11 @@ def retrieve_en_definitions(collection: Collection, korean_word: str):
 
     return definitions
 
+def retrieve_en_examples(collection: Collection, korean_word: str):
+   
+    # Retrieve word data from the document for the specified word
+    word_data = get_value(collection, korean_word, "word_data")
 
-def retrieve_user_en_examples(word_data, korean_word: str):
-    # Check if word_data is None before attempting to iterate
-    if word_data is None:
-        return []
-    
-    # Isolate user entry data with an en_example entry
-    user_en_example_data = [
-        data for data in word_data
-        if data.get("source_name") == "User"
-        if "en_examples" in data.get("page_data")
-    ]
-
-    # Target the most recent entry
-    most_recent_entry = _most_recent_value(user_en_example_data)
-    if most_recent_entry is None:
-        return []
-    page_data = most_recent_entry.get("page_data", [])
-
-    # Initalize variable to store definitions
-    en_examples = []
-
-    # Take first two examples
-    two_en_examples = page_data[:2]
-
-    # Iterate through each to retrieve both native and translated senteces
-    for en_example_data in two_en_examples:
-        english_sentence = en_example_data.get("english_sentence")
-        korean_sentence = en_example_data.get("korean_sentence")
-        # Append each pair to list of examples
-        en_example = {
-            "english_sentence": english_sentence,
-            "korean_sentence": korean_sentence            
-        }
-        en_examples.append(en_example)
-    if en_examples:
-        return en_examples
-    else:
-        return []
-
-def retrieve_naver_dict_en_examples(word_data, korean_word: str):
     # Check if word_data is None before attempting to iterate
     if word_data is None:
         return []
@@ -137,56 +101,30 @@ def retrieve_naver_dict_en_examples(word_data, korean_word: str):
     page_data = most_recent_entry.get("page_data", [])
     
     # Initalize variable to store definitions
-    en_examples = []
+    examples = []
 
     # Take first two examples
-    two_en_examples = page_data[:2]
+    two_examples = page_data[:2]
 
-    # Iterate through each to retrieve both native and translated senteces
-    for en_example_data in two_en_examples:
-        english_sentence = en_example_data.get("english_sentence")
-        korean_sentence = en_example_data.get("korean_sentence")
+    # Iterate through each to retrieve both native and translated sentences
+    for example_data in two_examples:
+        # Add type checking to handle strings vs dicts
+        if isinstance(example_data, dict):
+            english_sentence = example_data.get("english_sentence")
+            korean_sentence = example_data.get("korean_sentence")
+        else:
+            # Handle case where example_data is a string (from manual entry error)
+            print(f"Warning: Expected dict but got {type(example_data)}: {example_data}")
+            continue
+            
         # Append each pair to list of examples
-        en_example = {
+        example = {
             "english_sentence": english_sentence,
             "korean_sentence": korean_sentence            
         }
-        en_examples.append(en_example)
-    if en_examples:
-        return en_examples
-    else:
-        return []
-    
-def retrieve_en_examples(collection: Collection, korean_word: str):
-    """
-    Retrieves hanja and the senses associated with that hanja context of a specified Korean word.
+        examples.append(example)
 
-    Returns:
-        pairs: a list of dictionary items containing the keys "hanja" and "senses" (a list of
-        senses for the associated hanja context)
-    """
-    # Retrieve word data from the document for the specified word
-    word_data = get_value(collection, korean_word, "word_data")
-    if word_data is None:
-        return[]
-
-    # Initialize variable to store English examples
-    en_examples = []
-
-    # Retrieve user entry English examples
-    user_en_examples = retrieve_user_en_examples(word_data, korean_word)
-    if user_en_examples:
-        en_examples = user_en_examples
-        return en_examples
-    else:
-        # Retrieve Naver Dictionary English examples
-        naver_dict_en_examples = retrieve_naver_dict_en_examples(word_data, korean_word)
-        if naver_dict_en_examples:
-            en_examples = naver_dict_en_examples
-            return en_examples
-        else:
-            return []
-
+    return examples
 
 def retrieve_hanjas(collection: Collection, korean_word: str):
     # Retrieve word data from the document for the specified word
@@ -227,6 +165,7 @@ def retrieve_hanjas(collection: Collection, korean_word: str):
     print(f"{hanjas}")
     return hanjas
 
+
 def set_word_attributes(collection: Collection, korean_word: str):
     hanja = retrieve_hanjas(collection, korean_word)
     en_definition = retrieve_en_definitions(collection, korean_word)
@@ -239,50 +178,6 @@ def set_word_attributes(collection: Collection, korean_word: str):
     if en_example_sentence is not None:
         set_value(collection, korean_word, "en_example_sentence", en_example_sentence)
 
-
-def retrieve_user_hanja_idiom_pairs(word_data, korean_word: str):
-    user_word_data = [
-        data for data in word_data
-        if data.get("source_name") == "User"
-        if "hanja_idiom_pairs" in data.get("page_data")
-    ]
-
-    if user_word_data:
-        # Retrieve the most recent user entry
-        most_recent_entry = _most_recent_value(user_word_data)
-        if most_recent_entry is None:
-            return []
-        user_page_data = most_recent_entry.get("page_data", [])
-
-        # Isolate word items that match the korean_word string
-        user_word_senses = [entry for entry in user_page_data if entry.get("korean_word") == korean_word]
-        if not user_word_senses:
-            return []
-
-        # Initialize list to hold hanja-idiom pairs
-        user_hanja_idiom_pairs = []
-        # Append each hanja-idiom pair to the list of pairs
-        for word_sense in user_word_senses:
-            hanja = word_sense.get("hanja")
-            pos = word_sense.get("pos")
-            pos_string = f"[{pos}] "
-            en_word = word_sense.get("en_word")
-            idiom = f"{pos_string}{en_word}"
-            # Initialize variable senses
-            senses = []
-            senses.append(idiom)
-            # Initialize dictionary data to store hanja and its senses
-            hanja_idiom_pair = {
-                "hanja": hanja,
-                "senses": senses
-            }
-            user_hanja_idiom_pairs.append(hanja_idiom_pair)
-        if user_hanja_idiom_pairs:
-            return user_hanja_idiom_pairs
-        else:
-            return []
-    else:
-        return []
 
 def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
     # Isolate data from Korean Basic Dictionary API calls
@@ -297,20 +192,13 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
     if krdict_word_data:
         # Retrieve the most recent Korean Basic Dictionary entry
         most_recent_entry = _most_recent_value(krdict_word_data)
-        if not most_recent_entry:
+        if most_recent_entry is None:
             return []
         krdict_page_data = most_recent_entry.get("page_data", [])
-        
-        # Check to prevent iteration over NoneType
-        if krdict_page_data is None:
-            return []
 
         # Isolate word items that match the korean_word string
         krdict_word_items = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
-
-        # Isolate word items that match the korean_word string
-        krdict_word_items = [entry for entry in krdict_page_data if entry.get("word") == korean_word]
-        if not krdict_word_items:
+        if krdict_word_items is None:
             return []
         
         # Initialize list to hold hanja-idiom pairs
@@ -323,12 +211,10 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
                 origin = word_item.get("origin")
                 # Retrieve pos value
                 pos = word_item.get("pos")
-                if pos:
-                    pos_string = f"[{pos}] "
                 # Retrieve en_word value
                 en_word = word_item.get("en_word")
                 # Add part of speech to idiom string
-                idiom = f"{pos_string}{en_word}"
+                idiom = f"[{pos}] {en_word}"
                 # Initialize variable senses
                 senses = []
                 senses.append(idiom)
@@ -338,7 +224,7 @@ def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
                     "senses": senses
                 }
                 krdict_hanja_idiom_pairs.append(hanja_idiom_pair)
-            # If no english idiom provided, continue
+            # If no english idiom provided, continue on
             else:
                 continue
         if krdict_hanja_idiom_pairs:
@@ -396,9 +282,11 @@ def retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word: str):
     else:
         return []
 
+
 def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     """
-    Retrieves hanja and the senses associated with that hanja context of a specified Korean word.
+    Retrieves hanja and the english definitions associated with that hanja context of
+    a specified Korean word.
 
     Returns:
         pairs: a list of dictionary items containing the keys "hanja" and "senses" (a list of
@@ -413,22 +301,19 @@ def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     pairs = []
 
     # Retrieve Korean Basic Dictionary data
-    user_hanja_idiom_pairs = retrieve_user_hanja_idiom_pairs(word_data, korean_word)
-    if user_hanja_idiom_pairs:
-        pairs = user_hanja_idiom_pairs
-        return pairs
+    krdict_hanja_idiom_pairs = retrieve_krdict_hanja_idiom_pairs(word_data, korean_word)
+    if krdict_hanja_idiom_pairs:
+        pairs = krdict_hanja_idiom_pairs
     else:
-        krdict_hanja_idiom_pairs = retrieve_krdict_hanja_idiom_pairs(word_data, korean_word)
-        if krdict_hanja_idiom_pairs:
-            pairs = krdict_hanja_idiom_pairs
-            return pairs
+        naver_dict_hanja_idiom_pairs = retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word)
+        if naver_dict_hanja_idiom_pairs:
+            pairs = naver_dict_hanja_idiom_pairs
         else:
-            naver_dict_hanja_idiom_pairs = retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word)
-            if naver_dict_hanja_idiom_pairs:
-                pairs = naver_dict_hanja_idiom_pairs
-                return pairs
-            else:
-                return []
+            pairs = [{
+                "hanja": "",
+                "senses": [""]
+            }]
+    return pairs
 
 
 def query_anki_flashcard_data(collection: Collection, korean_word: str) -> Dict:
@@ -449,7 +334,7 @@ def query_anki_flashcard_data(collection: Collection, korean_word: str) -> Dict:
     hanja_idiom_pairs = retrieve_hanja_idioms_pairs(collection, korean_word)
     en_example_sentences = retrieve_en_examples(collection, korean_word)
 
-    # Use a dicionary comprehension to index each hanja-idiom pair entry
+    # Use a dicionary comprehension to index each entry
     entries = {
         f"entry_{idx}": {
             "hanja": pair.get("hanja"),
@@ -468,11 +353,7 @@ def query_anki_flashcard_data(collection: Collection, korean_word: str) -> Dict:
     }
 
     # Initialize flashcard dictionary to hold the list of entries and examples
-    flashcard_data = {
-        "korean_word": korean_word,
-        "entries": entries,
-        "examples": examples
-    }
+    flashcard_data = {"korean_word": korean_word, "entries": entries, "examples": examples}
 
     # print(f"Flashcard: {flashcard_data}")
     return flashcard_data
@@ -485,7 +366,7 @@ def initialize_word_document(collection: Collection, korean_word: str):
     )
     create_document(collection, word_obj)
 
-async def process_word(collection: Collection, korean_word: str, language: Optional[str] = None) -> bool:
+async def process_word(collection: Collection, korean_word: str, language: Optional[str] = None):
     # Check if document for word exists
     exists = document_exists(collection, korean_word)
 
@@ -495,21 +376,17 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
 
     # Aggregate data for specified word and save found entries as the list "word_data_objects"
     word_data_objects = await lookup_entry(korean_word, language)
-
-    # Track if any data was found
-    data_found = False
     
     # Initialize a list to store dictionary representations
     word_data_list = []
     # Convert each dataclass object to a dictionary for MongoDB compatability
     for data_object in word_data_objects:
         if data_object:
-            data_found = True
             try:
                 data_dict = asdict(data_object)
                 word_data_list.append(data_dict)
             except TypeError:
-                # Check if the object is already adictionary
+                # Check if the object is already a dictionary
                 if isinstance(data_object, Dict):
                     data_dict = data_object
                     word_data_list.append(data_dict)
@@ -518,23 +395,21 @@ async def process_word(collection: Collection, korean_word: str, language: Optio
     if word_data_list:
         for word_data in word_data_list:
             append_value(collection, korean_word, "word_data", word_data)
-    else:
-        # If no data was added to the list, mark as not found
-        data_found = False
 
     # Set values of note (e.g. hanja, definitions)
     set_word_attributes(collection, korean_word)
 
-    # Double-check by verifying flashcard data exists
-    if data_found:
-        flashcard_data = query_anki_flashcard_data(collection, korean_word)
-        # If no entries and no examples, consider it as no data found
-        if not flashcard_data.get("entries") and not flashcard_data.get("examples"):
-            data_found = False
+def process_user_entry(collection: Collection, korean_word: str, page_data: Dict):
+    # Check if document for word exists
+    exists = document_exists(collection, korean_word)
 
-    # Return whether any data was found
-    return data_found
-
+    # Create a document for the specified word if not
+    if exists is False:
+        initialize_word_document(collection, korean_word)
+    
+    if page_data:
+        append_value(collection, korean_word, "word_data", page_data)
+    
 def check_missing_values(collection: Collection, korean_word: str, data_found: bool = False) -> Optional[Dict]:
     """
     Checks if a word document is missing critical values for flashcard creation.
@@ -574,73 +449,33 @@ def check_missing_values(collection: Collection, korean_word: str, data_found: b
             "korean_word": korean_word,
             "missing_values": missing_values
         }
-    
-    return None
-
-def process_user_entry(collection: Collection, korean_word: str, user_page_data: Dict):
-    """
-    Processes user-entered data and saves it to the database in the correct format.
-    
-    Args:
-        collection: The MongoDB collection
-        korean_word: The Korean word
-        user_page_data: Dictionary containing hanja_idiom_pairs and en_examples
-    """
-    # Initialize dictionary to store hanja-idiom pairs and examples
-    temp_page_data = {
-        "korean_word": korean_word
-    }
-
-    # Process hanja-idiom pairs if provided
-    if user_page_data.get("hanja_idiom_pairs"):
-        hanja_idiom_pairs = user_page_data["hanja_idiom_pairs"]
-        temp_page_data["hanja_idiom_pairs"] = hanja_idiom_pairs
-
-
-    en_examples = []
-    # Process English examples if provided
-    if user_page_data.get("en_examples"):
-        en_examples = user_page_data["en_examples"]
-        temp_page_data["en_examples"] = en_examples
-        # Set the en_example_sentence value
-        set_value(collection, korean_word, "en_example_sentence", en_examples)
-    
-    # Create a UserEntry object with the processed data
-    user_entry = UserEntry(
-        page_data=temp_page_data
-    )
-    # Save the user entry to the database
-    append_value(collection, korean_word, "word_data", user_entry)
+    else:
+        return None
 
 def stage_flashcard(collection: Collection, korean_word: str, card_type: Optional[str]=None):
-    # Set default card type if none provided
     if card_type is None:
-        card_type = "anki"
-    
-    # Create flashcard based on type
-    if card_type == "anki":
-        flashcard_data = query_anki_flashcard_data(collection, korean_word)
-        flashcard_note = create_anki_card(flashcard_data)
-        return flashcard_note
+        flashcard_type = "anki"
     else:
-        print(f"Warning: Unknown card type '{card_type}', defaulting to Anki")
+        flashcard_type = card_type
+
+    if flashcard_type == "anki":
         flashcard_data = query_anki_flashcard_data(collection, korean_word)
         flashcard_note = create_anki_card(flashcard_data)
         return flashcard_note
-"""
-# --- Test ---
-from db.connection import connect_server, retrieve_collection
-import asyncio
-import pprint
 
-client = connect_server()
-collection = retrieve_collection(client)
 
-# - Work on finding slang terms,
-# - Split up this page into manageable sections,
-# - Fix up retrieve_en_definions, ... for modularity
-korean_word = "월급 루펑"
-asyncio.run(process_word(collection, korean_word))
-flashcard_note = stage_flashcard(collection, korean_word)
-pprint.pprint(flashcard_note)
-"""
+# IMPORTANT: Test code should only run when this file is executed directly
+# NOT when it's imported as a module
+if __name__ == "__main__":
+    # --- Test ---
+    from db.connection import connect_server, retrieve_collection
+    import asyncio
+    import pprint
+
+    client = connect_server()
+    collection = retrieve_collection(client)
+
+    korean_word = "월급 루펑"
+    asyncio.run(process_word(collection, korean_word))
+    flashcard_note = stage_flashcard(collection, korean_word)
+    pprint.pprint(flashcard_note)
