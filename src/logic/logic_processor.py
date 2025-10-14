@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pymongo.collection import Collection
 
 # Internal library methods imports
-from db.models import KoreanWord
+from db.models import KoreanWord, UserEntry
 from db.crud import get_value, set_value, append_value, create_document, document_exists
 from logic.logic_lookup import lookup_entry
 from integration.anki.card_generator import create_anki_card
@@ -76,55 +76,7 @@ def retrieve_en_definitions(collection: Collection, korean_word: str):
 
     return definitions
 
-def retrieve_en_examples(collection: Collection, korean_word: str):
-   
-    # Retrieve word data from the document for the specified word
-    word_data = get_value(collection, korean_word, "word_data")
 
-    # Check if word_data is None before attempting to iterate
-    if word_data is None:
-        return []
-    
-    # Isolate scraped data from Naver's Korean-English Dictionary "Example" page
-    naver_en_example_data = [
-        data for data in word_data
-        if data.get("source_name") == "Naver Dictionary"
-        and data.get("source_url") == "naver.dict.com"
-        and data.get("source_region") == "en"
-        and data.get("source_page") == "example"
-    ]
-
-    # Target the most recent entry
-    most_recent_entry = _most_recent_value(naver_en_example_data)
-    if most_recent_entry is None:
-        return []
-    page_data = most_recent_entry.get("page_data", [])
-    
-    # Initalize variable to store definitions
-    examples = []
-
-    # Take first two examples
-    two_examples = page_data[:2]
-
-    # Iterate through each to retrieve both native and translated sentences
-    for example_data in two_examples:
-        # Add type checking to handle strings vs dicts
-        if isinstance(example_data, dict):
-            english_sentence = example_data.get("english_sentence")
-            korean_sentence = example_data.get("korean_sentence")
-        else:
-            # Handle case where example_data is a string (from manual entry error)
-            print(f"Warning: Expected dict but got {type(example_data)}: {example_data}")
-            continue
-            
-        # Append each pair to list of examples
-        example = {
-            "english_sentence": english_sentence,
-            "korean_sentence": korean_sentence            
-        }
-        examples.append(example)
-
-    return examples
 
 def retrieve_hanjas(collection: Collection, korean_word: str):
     # Retrieve word data from the document for the specified word
@@ -178,6 +130,187 @@ def set_word_attributes(collection: Collection, korean_word: str):
     if en_example_sentence is not None:
         set_value(collection, korean_word, "en_example_sentence", en_example_sentence)
 
+def retrieve_user_en_examples(word_data, korean_word: str):
+    # Isolate data from User Entry data
+    user_entry_data = [
+        data for data in word_data
+        if data.get("source_name") == "User Entry"
+        if data.get("page_data") and "en_examples" in data.get("page_data")
+    ]
+
+    # Target the most recent entry
+    if user_entry_data:
+        # Retrieve the most recent user entry
+        most_recent_entry = _most_recent_value(user_entry_data)
+        if most_recent_entry is None:
+            return []
+        user_page_data = most_recent_entry.get("page_data", [])
+
+        # Isolate en_examples from the page_data
+        user_en_examples = user_page_data["en_examples"]
+        if user_en_examples is None:
+            return []
+
+        # Initialize temporary list to hold hanja-idiom pairs
+        en_examples = []
+        # Append each example to the list of examples
+        for example in user_en_examples:
+            # Retrieve korean_sentence value
+            korean_sentence = ""
+            if "korean_sentence" in example:
+                korean_sentence = example.get("korean_sentence")
+            # Retrieve english_sentence value
+            english_sentence = ""
+            if "english_sentence" in example:
+                english_sentence = example.get("english_sentence")
+
+            # Initialize dictionary data to store korean and english sentences
+            en_example = {
+                "korean_sentence": korean_sentence,
+                "english_sentence": english_sentence
+            }
+            if en_example:
+                en_examples.append(en_example)
+        if en_examples:
+            return en_examples
+        else:
+            return []
+    else:
+        return []
+
+def retrieve_naver_dict_en_examples(word_data, korean_word: str):
+    # Check if word_data is None before attempting to iterate
+    if word_data is None:
+        return []
+    
+    # Isolate scraped data from Naver's Korean-English Dictionary "Example" page
+    naver_en_example_data = [
+        data for data in word_data
+        if data.get("source_name") == "Naver Dictionary"
+        and data.get("source_url") == "naver.dict.com"
+        and data.get("source_region") == "en"
+        and data.get("source_page") == "example"
+    ]
+
+    # Target the most recent entry
+    most_recent_entry = _most_recent_value(naver_en_example_data)
+    if most_recent_entry is None:
+        return []
+    page_data = most_recent_entry.get("page_data", [])
+    
+    # Initalize variable to store definitions
+    en_examples = []
+
+    # Take first two examples
+    two_examples = page_data[:2]
+
+    # Iterate through each to retrieve both native and translated sentences
+    for example_data in two_examples:
+        # Add type checking to handle strings vs dicts
+        if isinstance(example_data, dict):
+            english_sentence = example_data.get("english_sentence")
+            korean_sentence = example_data.get("korean_sentence")
+        else:
+            # Handle case where example_data is a string (from manual entry error)
+            print(f"Warning: Expected dict but got {type(example_data)}: {example_data}")
+            continue
+            
+        # Append each pair to list of examples
+        en_example = {
+            "english_sentence": english_sentence,
+            "korean_sentence": korean_sentence            
+        }
+        en_examples.append(en_example)
+
+    if en_examples:
+        return en_examples
+    else:
+        return []
+
+def retrieve_en_examples(collection: Collection, korean_word: str):
+    """
+    Retrieves hanja and the english definitions associated with that hanja context of
+    a specified Korean word.
+
+    Returns:
+        en_examples: a list of dictionary items containing the keys "english_sentence" and "korean_sentence"
+    """
+    # Retrieve word data from the document for the specified word
+    word_data = get_value(collection, korean_word, "word_data")
+    if word_data is None:
+        return[]
+
+    # Initialize variable to store pairs
+    en_examples = []
+
+    # Retrieve User entry data
+    user_en_examples = retrieve_user_en_examples(word_data, korean_word)
+    if user_en_examples:
+        en_examples = user_en_examples
+        return en_examples
+    else:
+        # Retrieve Naver Dictionary data
+        naver_dict_en_examples = retrieve_naver_dict_en_examples(word_data, korean_word)
+        if naver_dict_en_examples:
+            en_examples = naver_dict_en_examples
+        else:
+            en_examples = [{
+                "english_sentence": "",
+                "korean_sentence": ""
+            }]
+    return en_examples
+
+
+def retrieve_user_hanja_idiom_pairs(word_data, korean_word: str):
+    # Isolate data from User Entry data
+    user_entry_data = [
+        data for data in word_data
+        if data.get("source_name") == "User Entry"
+        if data.get("page_data") and "hanja_idiom_pairs" in data.get("page_data")
+    ]
+
+    # Target the most recent entry
+    if user_entry_data:
+        # Retrieve the most recent user entry
+        most_recent_entry = _most_recent_value(user_entry_data)
+        if most_recent_entry is None:
+            return []
+        user_page_data = most_recent_entry.get("page_data", [])
+
+        # Isolate hanja_idiom_pairs from the page_data
+        user_hanja_idiom_pairs = user_page_data["hanja_idiom_pairs"]
+        if user_hanja_idiom_pairs is None:
+            return []
+
+        # Initialize temporary list to hold hanja-idiom pairs
+        hanja_idiom_pairs = []
+        # Append each hanja-idioms pair to the list of pairs
+        for pair in user_hanja_idiom_pairs:
+            # Check if english idiom provided
+            # Retrieve hanja value
+            hanja = ""
+            if "hanja" in pair:
+                hanja = pair.get("hanja")
+            senses = []
+            if "senses" in pair:
+                for sense in pair.get("senses"):
+                    senses.append(sense)
+
+             # Initalize dictionary data to store hanja and its senses
+            hanja_idiom_pair = {
+                "korean_word": korean_word,
+                "hanja": hanja,
+                "senses": senses
+            }
+            
+            hanja_idiom_pairs.append(hanja_idiom_pair)
+            # If no english idiom provided, continue on
+        if hanja_idiom_pairs:
+            return hanja_idiom_pairs
+        else:
+            return []
+    else:
+        return []
 
 def retrieve_krdict_hanja_idiom_pairs(word_data, korean_word: str):
     # Isolate data from Korean Basic Dictionary API calls
@@ -282,7 +415,6 @@ def retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word: str):
     else:
         return []
 
-
 def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     """
     Retrieves hanja and the english definitions associated with that hanja context of
@@ -300,19 +432,26 @@ def retrieve_hanja_idioms_pairs(collection: Collection, korean_word: str):
     # Initialize variable to store pairs
     pairs = []
 
-    # Retrieve Korean Basic Dictionary data
-    krdict_hanja_idiom_pairs = retrieve_krdict_hanja_idiom_pairs(word_data, korean_word)
-    if krdict_hanja_idiom_pairs:
-        pairs = krdict_hanja_idiom_pairs
+    # Retrieve User entry data
+    user_hanja_idiom_pairs = retrieve_user_hanja_idiom_pairs(word_data, korean_word)
+    if user_hanja_idiom_pairs:
+        pairs = user_hanja_idiom_pairs
+        return pairs
     else:
-        naver_dict_hanja_idiom_pairs = retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word)
-        if naver_dict_hanja_idiom_pairs:
-            pairs = naver_dict_hanja_idiom_pairs
+        # Retrieve Korean Basic Dictionary data
+        krdict_hanja_idiom_pairs = retrieve_krdict_hanja_idiom_pairs(word_data, korean_word)
+        if krdict_hanja_idiom_pairs:
+            pairs = krdict_hanja_idiom_pairs
+        # Retrieve Naver Dictionary data
         else:
-            pairs = [{
-                "hanja": "",
-                "senses": [""]
-            }]
+            naver_dict_hanja_idiom_pairs = retrieve_naver_dict_hanja_idiom_pairs(word_data, korean_word)
+            if naver_dict_hanja_idiom_pairs:
+                pairs = naver_dict_hanja_idiom_pairs
+            else:
+                pairs = [{
+                    "hanja": "",
+                    "senses": [""]
+                }]
     return pairs
 
 
@@ -408,8 +547,26 @@ def process_user_entry(collection: Collection, korean_word: str, page_data: Dict
         initialize_word_document(collection, korean_word)
     
     if page_data:
-        append_value(collection, korean_word, "word_data", page_data)
-    
+        # Create User Entry dataclass object
+        user_entry_data_object = UserEntry(
+            page_data=page_data,
+        )
+        
+        # Convert to dictionary and append as a value for the key "word_data"
+        if user_entry_data_object:
+            try:
+                user_entry = asdict(user_entry_data_object)
+            except TypeError:
+                # Check if the object is already a dictionary
+                if isinstance(user_entry_data_object, Dict):
+                    user_entry = user_entry_data_object
+            if user_entry:
+                append_value(collection, korean_word, "word_data", user_entry)
+            else:
+                print("Error: Could not convert user entry to dictionary.")
+        else:
+            print("Error: User entry data object is None.")
+
 def check_missing_values(collection: Collection, korean_word: str, data_found: bool = False) -> Optional[Dict]:
     """
     Checks if a word document is missing critical values for flashcard creation.

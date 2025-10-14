@@ -8,8 +8,7 @@ class UserEntry:
     A data class to represent manually-entered user data for a Korean word.
     """
     # Core data information
-    source_url: str = "user_input"
-    source_name: str = "User"
+    source_name: str = "User Entry"
     
     # User-entered data
     page_data: Dict = field(default_factory=dict)
