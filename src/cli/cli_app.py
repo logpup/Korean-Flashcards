@@ -6,6 +6,7 @@ from typing import Optional
 from typing_extensions import Annotated
 
 # Third-party external library imports
+import pprint
 import typer
 from rich.console import Console
 from pymongo.errors import OperationFailure
@@ -170,9 +171,9 @@ async def _generate_flashcards_async(
             console.print(f"[bold magenta]Exporting to directory:[/] {directory}")
             console.print(f"[bold magenta]Directory type:[/] {type(directory)}")
             console.print(f"[bold magenta]Directory exists:[/] {directory.exists()}")
-            
-            export_flashcard_deck(deck_data, console, filename, directory, card_type)
-
+            if deck_data:
+                export_flashcard_deck(deck_data, console, filename, directory, card_type)
+                
         except OperationFailure as e:
             print(f"ERROR: Operation failed. {e}")
         

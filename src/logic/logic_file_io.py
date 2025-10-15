@@ -99,10 +99,22 @@ def import_candidate_file(filepath):
         return word_list
     
 def export_flashcard_deck(deck_data: List, console: Console, filename: Optional[str] = None, directory: Optional[Path] = None, card_type: Optional[str] = None):
+
+    # Set default filename if not provided
+    if filename is None:
+        filename = "flashcards.apkg"
+    # Set default directory if not provided
+    if directory is None:
+        directory = Path(".")
+    # Set default card type if not provided
+    if card_type is None:
+        card_type = "anki"
+ 
     # Create directory if it doesn't exist
     if not directory.exists():
         directory.mkdir(parents=True, exist_ok=True)
         console.print(f"[bold green]Created directory:[/] {directory}")
     
     if card_type == "anki":
+        print(f"[bold magenta]Exporting Anki deck to:[/] {directory / filename}")
         export_anki_file(deck_data, filename, directory)

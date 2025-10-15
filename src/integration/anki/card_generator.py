@@ -1,5 +1,6 @@
 # Standard Library Imports
 import time
+import re
 import os
 import datetime
 from typing import Dict, List, Optional
@@ -47,7 +48,11 @@ def create_anki_card(word_data: Dict) -> genanki.Note:
     # First, create the string literal for the hanja and idiom pairs
     entries_string = ""
     if entries is not None:
-        for entry in entries.values():
+        # Use enumerate to get both the index (starting at 1) and the value
+        for entry_idx, entry in enumerate(entries.values(), start=1):
+            # Add a line break before each entry after the first
+            if entry_idx > 1:
+                entries_string += "<br>"
             # Print out hanja to entries_string
             hanja = entry.get("hanja")
             if hanja:
@@ -188,8 +193,11 @@ def export_anki_file(deck_data: List, fn: Optional[str], dir: Optional[Path]):
         formatted_date = now.strftime("%Y-%m-%d-%H-%M-%S")
         # Set as deck and file names
         deck_name = f"flashcards-{formatted_date}"
-        filename = f"{deck_name}.apkg"
-    
+        # Check if the filename has a valid extension
+        has_extension = re.search(r'[^/]+\.[^.]+$', filename)
+        if not has_extension:
+            filename = f"{filename}.apkg"
+
     # Handle directory
     if dir and str(dir) != ".":  # Check if dir parameter was provided and not default
         directory_path = Path(dir)
