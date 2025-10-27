@@ -12,16 +12,17 @@ def _import_txt(filepath):
     """
     Internal function to import a simple text file.
 
-    The moethod performs the following steps;
+    The method performs the following steps:
     1. Opens and reads the specified text file.
     2. Strips leading/trailing whitespaces and removes linebreak from each line.
     3. Filters out any empty lines.
-    4. Create a pandas DataFrame where the cleaned lines are stored in the first column.
+    4. Returns a list of strings (one per line).
     """
-    word_list = []  # Initalize empty list to send back if there is an error
+    word_list = []  # Initialize empty list to send back if there is an error
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
-            lines = [line.strip().split(',', 1) for line in f if line.strip()]
+            # FIX: Changed to return flat list of strings instead of list of lists
+            lines = [line.strip() for line in f if line.strip()]
             word_list = lines
             return word_list
     except FileNotFoundError:
@@ -34,14 +35,13 @@ def _import_txt(filepath):
 def _import_html(filepath):
     """
     Reads a local HTML file, removes linebreaks, and stores the contents of
-    each line in a pandas DataFrame.
+    each line in a list.
 
     The method performs the following steps:
     1. Opens and reads the specified HTML file.
     2. Strips leading/trailing whitespace and removes linebreaks from each line.
     3. Filters out any empty lines.
-    4. Creates a pandas DataFrame where the cleaned lines are stored in the
-       first column.
+    4. Returns a list of strings.
     """
     try:
         # Use a 'with' statement to open and read the file
@@ -85,7 +85,7 @@ def import_candidate_file(filepath):
         filepath (str): The path to the file containing the word list.
         
     Returns:
-        word_list: A list of Korean words for futher processing
+        word_list: A list of Korean words (strings) for further processing
     """
     file_extension = os.path.splitext(filepath)[1].lower()
 
